@@ -1,0 +1,35 @@
+{
+  "season": 2025,
+  "sample": {
+    "start_date": "2025-04-01",
+    "end_date": "2025-04-03",
+    "chunk_days": 3
+  },
+  "full": {
+    "refresh_days": 3,
+    "ranges": [
+      {
+        "season": 2025,
+        "start_date": "2025-03-18",
+        "end_date": "2025-09-28",
+        "chunk_days": 7
+      },
+      {
+        "season": 2026,
+        "start_date": "2026-03-25",
+        "end_date": "2026-09-27",
+        "chunk_days": 7,
+        "latest_complete_day": true
+      }
+    ]
+  },
+  "paths": {
+    "raw_dir": "data/raw",
+    "game_context_dir": "data/game_context",
+    "venue_reference": "data/game_context/mlb_venues.parquet",
+    "database": "database/mlb_pitch_analytics.duckdb",
+    "tableau_dir": "data/tableau",
+    "outputs_dir": "outputs",
+    "log_file": "logs/pipeline.log"
+  }
+}

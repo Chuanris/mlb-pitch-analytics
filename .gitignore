@@ -1,0 +1,41 @@
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.pybaseball/
+.matplotlib/
+
+# JavaScript dependencies and generated dashboard bundle
+dashboard/node_modules/
+dashboard/dist/
+
+# Regenerable MLB data, databases, models, and exports
+data/
+database/
+outputs/
+logs/
+
+# Local design review and browser profiles
+.impeccable/
+dashboard/scripts/capture-game-day*.mjs
+
+# Local editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,53 @@
+:root {
+  color-scheme: light;
+  --adaptive-theme: 0;
+  --fixed-theme-scheme: light;
+  --font-display: "Playfair Display", "Libre Caslon Display", Georgia, serif;
+  --font-body: "Source Serif 4", Georgia, serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  --font-sans-default: var(--font-body);
+  --font-sans: var(--font-body);
+  --background: #ffffff;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --muted: #f5f5f5;
+  --control: #ffffff;
+  --control-hover: #000000;
+  --interaction-hover: var(--muted);
+  --interaction-active: var(--control-hover);
+  --text: #000000;
+  --secondary: #525252;
+  --border: #e5e5e5;
+  --border-strong: #000000;
+  --accent: var(--text);
+  --positive: var(--text);
+  --negative: var(--text);
+  --chart-1: #000000;
+  --chart-2: #2b2b2b;
+  --chart-3: #4a4a4a;
+  --chart-4: #696969;
+  --chart-5: #858585;
+  --chart-6: #a3a3a3;
+  --chart-7: #c4c4c4;
+  --chart-8: #e5e5e5;
+  --chart-neutral-fill: color-mix(in srgb, var(--text) 3%, var(--surface));
+  --ranked-list-fill: color-mix(in srgb, var(--chart-1) 16%, var(--surface));
+  --ranked-list-fill-hover: color-mix(in srgb, var(--chart-1) 24%, var(--surface));
+  --movement-positive: color-mix(in srgb, var(--positive) 75%, var(--text));
+  --movement-negative: color-mix(in srgb, var(--negative) 75%, var(--text));
+  --movement-total: var(--secondary);
+  --card-radius: 0px;
+  --data-card-radius: 0px;
+  --data-card-background: var(--surface-raised);
+  --control-radius: 0px;
+  --mark-radius: 0;
+  --card-shadow: none;
+  --shadow: none;
+  --data-app-chrome-background: var(--background);
+  --data-app-chrome-text: var(--text);
+}
+
+:root:not([data-app-theme]),
+:root:is([data-app-theme="original"], [data-app-theme="codex-classic"]) {
+  --dashboard-background: var(--background);
+}
