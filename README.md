@@ -1,261 +1,335 @@
 # MLB Pitch Strategy & Plate Discipline Analytics
 
-This portfolio project studies how MLB pitchers change pitch selection, location, and outcomes across count states and batter handedness. It is descriptive and diagnostic: it does **not** predict game winners.
+[English](#english) · [繁體中文](#繁體中文)
 
-> Repository note: no API key is required for the documented pipeline. Local credentials, browser profiles, generated databases, raw Statcast partitions, model artifacts, and exports are excluded from version control. See [SECURITY.md](SECURITY.md) for the publication checklist.
+> A reproducible MLB Statcast analytics portfolio: Python + DuckDB + SQL + scikit-learn + React.
+>
+> 可重現的 MLB Statcast 分析作品集：Python + DuckDB + SQL + scikit-learn + React。
 
-## What this version demonstrates
+---
 
-- Restartable Python extraction from Baseball Savant through `pybaseball`
-- Restartable MLB game-time, venue, roof, and recorded-weather extraction
-- Date-partitioned Parquet raw files
-- DuckDB bronze, silver, and gold data layers
-- SQL joins, CTEs, window functions, conditional aggregation, and data modeling
-- Automated data-quality gates
-- Excel audit and formula practice
-- Tableau-ready exports
-- A reproducible Jupyter tutorial
+## English
+
+### Overview
+
+This project examines how MLB pitchers change pitch selection, location, and outcomes across count states and batter handedness. It provides descriptive analysis, post-release pitch-quality models, fantasy-pitching research tools, and a bilingual interactive dashboard.
+
+It is **not** a game-winner prediction system, betting model, or guaranteed fantasy recommendation.
+
+### Highlights
+
+- Restartable Statcast extraction through `pybaseball`
+- MLB schedule, venue, roof, and recorded-weather context
+- Date-partitioned Parquet files and DuckDB bronze/silver/gold layers
+- SQL joins, CTEs, window functions, conditional aggregation, and quality gates
 - Leakage-controlled, out-of-time whiff and hard-hit probability models
-- A self-contained interactive dashboard with reviewed-data provenance
+- Fantasy Pitching Radar and seven-day Stream Planner
+- Tableau-ready CSV exports and an Excel lesson workbook
+- Reproducible Jupyter tutorials and model audits
+- Self-contained React dashboard with English / Traditional Chinese UI
+- Source lineage, definitions, denominators, and sample limits shown in the dashboard
 
-## Pipeline
+### Architecture
 
 ```mermaid
 flowchart TD
     A["Baseball Savant Statcast"] --> B["Python date partitions"]
-    W["MLB schedule + venue API"] --> X["Game context partitions"]
+    W["MLB schedule and venue APIs"] --> X["Game-context partitions"]
     B --> C["Bronze: raw Parquet"]
     X --> C
     C --> D["Silver: pitch fact table"]
     D --> E["Gold: analysis summaries"]
-    D --> M["Gold: shared model features"]
-    M --> N["Baseline + predictive models"]
-    E --> F["Excel lesson"]
-    E --> G["Tableau extracts"]
-    D --> H["Interactive pitch dashboard"]
+    D --> M["Gold: model features"]
+    M --> N["Model training and scoring"]
+    E --> F["Excel and Tableau exports"]
+    D --> H["Bilingual React dashboard"]
+    N --> H
 ```
 
-The fact table grain is one pitch, identified by `game_pk + at_bat_number + pitch_number`.
+The pitch fact table has one row per pitch, keyed by `game_pk + at_bat_number + pitch_number`.
 
-## Quick start
+### Quick start
 
-Create and activate a virtual environment, then install the dependencies:
-
-```bash
-python -m venv .venv
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-# macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Run the small real-data lesson pipeline:
-
-```bash
-python run_pipeline.py --mode sample
-```
-
-This downloads April 1–3, 2025 Statcast data, builds the database, runs quality checks, and refreshes the Excel, Tableau, and dashboard data outputs. Existing raw partitions are skipped, so interrupted runs can be restarted safely.
-
-Open the built dashboard after the pipeline finishes:
-
-```text
-dashboard/dist/index.html
-```
-
-The dashboard is a self-contained HTML file. Its task-based navigation separates Fantasy decisions, model validation, and pitch exploration, with pitch-level filters shown only where they apply. Use the English / 繁體中文 switch to change the authored interface language; both the language and selected workspace persist in the current browser. Player, team, venue, pitch-type, and model names remain in their canonical source form. The source-data panel records the reviewed DuckDB table, SQL, date range, sample limitation, and metric definitions used by every component.
-
-The pipeline validates an existing Parquet partition before skipping it. The build step reads only the partitions configured for the selected mode, so a previous full-season run cannot silently change the sample lesson dataset.
-
-After the first lesson, run the complete 2025–2026 regular-season pipeline:
-
-```bash
-python run_pipeline.py --mode full
-```
-
-Full mode loads the complete 2025 regular season and the 2026 season through the latest complete day, capped at the scheduled September 27 finale. It uses restartable weekly partitions, refreshes the latest three days to pick up Statcast corrections, and filters to `game_type = 'R'` in the silver layer.
-
-Full mode also rebuilds the whiff and hard-hit training marts and retrains both
-post-release pitch-quality models. Run those steps independently with:
-
-```bash
-python -m src.train_whiff_model --config config/pipeline_config.json
-python -m src.train_hard_hit_model --config config/pipeline_config.json
-python -m src.score_pitch_models --config config/pipeline_config.json
-```
-
-The model predicts `P(whiff | swing)` after a pitch has been tracked. It may use
-the current pitch's velocity, movement, release characteristics, and location,
-so it must not be described as a pre-pitch forecast. Training uses the earlier
-season; the latest season is split chronologically into validation and untouched
-test periods. Outputs are written to `outputs/models/`:
-
-- `whiff_model_metrics.json`: split dates, feature contract, versions, and metrics
-- `whiff_model_calibration.csv`: calibration-bin diagnostics
-- `whiff_model_monthly.csv`: observed versus predicted monthly whiff rates
-- `whiff_*.joblib`: fitted scikit-learn pipelines
-- `whiff_probability_calibrator.joblib`: validation-only Platt calibration layer when its chronological acceptance gate passes
-
-Champion scoring writes full pitch-level holdout predictions plus compact ranking
-artifacts to `outputs/predictions/`:
-
-- `whiff_test_predictions.parquet`: calibrated `P(whiff | swing)` for every test swing
-- `hard_hit_test_predictions.parquet`: champion hard-hit probability for every test batted ball
-- `model_leaderboards.csv`: sample-gated pitcher and pitch-type expected-rate rankings
-- `prediction_manifest.json`: scorer, date-window, denominator, and row-count lineage
-
-Fantasy decision-support artifacts are written to `outputs/fantasy/`:
-
-- `pitcher_fantasy_radar.csv`: recent 7-, 14-, and 30-day pitcher rankings
-- `fantasy_radar_manifest.json`: profile weights, workload gates, lineage, and limitations
-- `matchup_stream_planner.csv`: upcoming schedule, probable starters, opponent context, park context, weather risk, and stream scores
-- `matchup_stream_planner_manifest.json`: live-source window, scoring weights, coverage, and limitations
-
-The training marts also contain leakage-safe pregame rolling form. Whiff form
-uses the pitcher's prior 200 swings, batter's prior 50 swings, and both players'
-prior 30 days. Hard-hit form uses the same windows over prior batted balls. Each
-value is frozen at the player's first eligible event of the game, so no current
-game result can enter its own features.
-
-Pitch-type form adds the pitcher's prior 100 and batter's prior 30 eligible
-events for the current pitch type, plus 30-day pitch-type windows. Matchup form
-uses prior events between the same pitcher and batter. These are also frozen
-before the game; missing matchup history remains missing rather than being
-mistaken for league-average experience.
-
-The pipeline compares base, weather, rolling, 14-day recent form, pitch-type,
-matchup, and combined candidates on every run. Through September 1, 2026, the
-whiff champion is the tuned, Platt-calibrated rolling + pitch-type + matchup
-model (`0.42224` test log loss; `0.7952` ROC-AUC; `0.0108` ECE). The hard-hit
-champion is rolling + pitch-type without matchup (`0.59397`; `0.7111`; `0.0048`
-ECE). The 14-day candidates were evaluated but did not pass the validation gate,
-so they remain research features rather than production scorer inputs.
-Matchup alone is nearly neutral for whiff and worsens hard-hit accuracy, while
-weather still worsens both tasks, so each target keeps its own validated feature
-set instead of sharing one forced production scorer.
-
-The dashboard includes fixed-holdout champion cards, target-specific model-lift
-comparisons, calibration curves, a Whiff/Hard-hit scoring explorer, sample-gated
-pitcher and pitch-type rankings, and the latest 250 scored events per target.
-The full pitch-level scores stay in parquet rather than inflating the standalone
-HTML. Page filters intentionally do not alter these model-evaluation and scoring
-blocks because they describe the reviewed chronological holdout rather than the
-current descriptive pitch slice.
-
-### Fantasy Pitching Radar
-
-The bilingual dashboard includes a Fantasy Pitching Radar for recent pitcher
-form. It supports 7-, 14-, and 30-day windows; Roto balance, Strikeout upside,
-and Ratio protection profiles; and starter, multi-inning, or relief workload
-filters. The 0-100 signal combines calibrated expected whiff rate, expected
-hard-hit suppression, K-BB%, chase rate, and walk suppression. Rankings expose
-sample size, role inference, underlying rates, prior-window change, and a short
-decision label.
-
-An insight-first decision board turns the selected ranking into a compact daily
-research queue: skill leader, starter stream, momentum watch, and underlying
-upside. Each item shows a conservative evidence-volume label and a next research
-action. The underlying-skill gap averages the expected-versus-observed whiff and
-hard-hit rate gaps; it is a hypothesis flag for deeper review, not a calibrated
-regression forecast.
-
-The Upcoming Stream Planner adds the next seven days of regular-season games
-from the MLB Stats API. It never guesses a missing probable starter. Confirmed
-probables are joined to the 14-day pitcher skill signal, the opponent's most
-recent 30 complete days of strikeout/walk/hard-hit tendencies, and the park's
-reviewed 2025-2026 contact environment. The resulting zero-to-100 Stream Score
-uses 65% pitcher skill, 25% opponent matchup, and 10% park context. Open-Meteo's
-hourly forecast nearest scheduled first pitch supplies a separate weather-risk
-flag; weather does not change the Stream Score.
-
-The dashboard's League Strategy Lab preserves that base score and calculates a
-separate Personalized Fit. Categories uses the chosen skill profile. Points skill
-proxy blends 60% chosen profile with 40% strikeout upside; low and balanced risk
-can subtract fixed weather, sample-volume, and cooling-trend haircuts, while high
-risk applies none. A fit of 70 starts the research shortlist.
-
-Personalized Fit is still a skills-based comparison, not projected fantasy
-points. League formats vary, and the local pitch feed does not yet include roster
-availability, league-specific point values, wins, saves, quality starts, official
-earned runs, or innings-pitched scoring. Consult the platform's live scoring
-settings before acting on a ranking.
-
-The Player Pool Manager lets a user label upcoming probable pitchers as
-`Available`, `My roster`, `Watchlist`, or `Unavailable`, then filter the Stream
-Planner to that pool. These labels are keyed by MLB pitcher ID and persist only in
-the current browser's local storage. They are manual workflow context, not a live
-ESPN/Yahoo roster sync, and never alter reviewed pipeline data or model scores.
-
-Open `notebooks/02_whiff_model_evaluation.ipynb` for the executed model audit.
-Open `notebooks/03_hard_hit_model_evaluation.ipynb` for the hard-hit audit.
-
-### Daily automatic update
-
-The Windows task `MLB-Pitch-Analytics-Daily-Update` runs every day at 06:30 local time. It refreshes Statcast plus MLB game context, rebuilds DuckDB and exports, runs all quality checks, retrains the whiff and hard-hit models, scores the champion models, refreshes the fantasy radar and upcoming stream planner, regenerates the dashboard data, and rebuilds `dashboard/dist/index.html`. If the computer is unavailable at 06:30, Task Scheduler starts it when available after the user signs in.
-
-Run the exact scheduled workflow manually:
+Requirements: Python 3.11+ and Node.js/npm.
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_daily_update.ps1
+# 1. Create the Python environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+
+# 2. Run the small real-data pipeline (April 1–3, 2025)
+python run_pipeline.py --mode sample
+
+# 3. Build the dashboard
+Set-Location dashboard
+npm.cmd install
+npm.cmd run build
 ```
 
-Check the most recent outcome in `logs/daily_update_status.json`; dated transcripts are written to `logs/daily_update_YYYY-MM-DD.log`. Reinstall or update the daily task with:
+Open `dashboard/dist/index.html` after the build completes. On macOS/Linux, activate the environment with `source .venv/bin/activate` and use `npm` in place of `npm.cmd`.
+
+The extractor validates existing Parquet partitions before reusing them. Sample mode reads only its configured dates, so a prior full-season run cannot silently alter the lesson dataset.
+
+### Full pipeline
+
+```powershell
+python run_pipeline.py --mode full
+Set-Location dashboard
+npm.cmd run build
+```
+
+Full mode processes the configured 2025 regular season and the 2026 season through the latest complete day. It refreshes recent partitions, rebuilds DuckDB and exports, retrains the two models, scores the chronological holdout, and refreshes the fantasy tools and dashboard snapshot.
+
+The complete run is substantially slower and downloads much more data than sample mode.
+
+### Models and interpretation
+
+The whiff model estimates `P(whiff | swing)` after a pitch has been tracked. The hard-hit model estimates hard-hit probability for eligible batted balls. They may use velocity, movement, release, and location from the current pitch, so neither model is a pre-pitch forecast.
+
+Training and evaluation are time ordered: the earlier season is used for training, followed by chronological validation and untouched test periods. Rolling player form, pitch-type history, and matchup history use prior events only and are frozen before each game.
+
+Generated model artifacts are written under `outputs/models/` and `outputs/predictions/`. These folders are intentionally excluded from Git; regenerate them locally to obtain current results.
+
+### Fantasy research tools
+
+The dashboard includes:
+
+- **Fantasy Pitching Radar:** 7-, 14-, and 30-day windows with Roto balance, strikeout-upside, and ratio-protection profiles.
+- **Upcoming Stream Planner:** confirmed probable starters combined with pitcher skill, opponent tendencies, park context, and a separate weather-risk flag.
+- **League Strategy Lab:** a transparent personalized-fit calculation for category or points-style research.
+- **Player Pool Manager:** browser-local labels such as Available, My roster, Watchlist, and Unavailable.
+
+These tools do not know roster availability or every league's scoring rules. They support research; they do not promise fantasy outcomes.
+
+### Daily update on Windows
+
+Install the optional Windows Task Scheduler job:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_daily_update_task.ps1
 ```
 
-`outputs/MLB_Excel_Lesson_1.xlsx` is the fixed three-day lesson workbook. Full mode refreshes the DuckDB database and CSV exports, but does not resize that sample workbook.
+Run the same workflow manually:
 
-## Project structure
-
-```text
-config/       Date ranges and paths
-data/raw/     Immutable date-partitioned Statcast files
-data/game_context/ Restartable schedule/weather partitions and venue reference
-data/tableau/ Analysis-ready CSV exports
-database/     DuckDB analytical database
-notebooks/    Guided tutorial and executed model audit
-outputs/      Excel lesson and quality report
-dashboard/    Interactive dashboard source and built HTML
-scripts/      Dashboard build and Windows daily-update automation
-sql/          Silver, gold, and analysis SQL
-src/          Extract, load, validate, and export steps
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_daily_update.ps1
 ```
 
-## Metric definitions
+The task is named `MLB-Pitch-Analytics-Daily-Update` and is configured for 06:30 local time. Local status and transcript files are written under `logs/`, which is excluded from Git.
+
+### Validation
+
+```powershell
+# Python tests
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v
+
+# Dashboard integrity and production build
+Set-Location dashboard
+npm.cmd run verify:runtime
+npm.cmd run build
+```
+
+### Project structure
+
+```text
+config/                Pipeline dates, modes, and local paths
+data/                  Generated raw/context/Tableau data (Git-ignored)
+database/              Generated DuckDB database (Git-ignored)
+dashboard/             React source, reviewed snapshot, and build tooling
+notebooks/             Tutorial and model-evaluation notebooks
+outputs/               Generated models, predictions, reports, and workbook
+scripts/               Dashboard build, sanitization, and Windows automation
+sql/                   Silver, gold, and analysis SQL
+src/                   Extraction, transformation, validation, and export code
+tests/                 Python unit and data-quality tests
+```
+
+### Metric definitions
 
 - `Whiff Rate = whiffs / swings`
 - `Chase Rate = out-of-zone swings / out-of-zone pitches`
 - `Hard-Hit Rate = batted balls at 95+ mph / batted-ball events`
 - `Zone Rate = pitches in Statcast zones 1–9 / all pitches`
 
-These are transparent project definitions. Always show the denominator and impose a minimum-pitch threshold before comparing pitchers.
+Always inspect the denominator and sample threshold before comparing pitchers.
 
-## Data sources
+### Data and security
 
-- Baseball Savant CSV documentation: https://baseballsavant.mlb.com/csv-docs
-- Baseball Savant Statcast search: https://baseballsavant.mlb.com/statcast_search
-- MLB Stats API schedule: https://statsapi.mlb.com/api/v1/schedule
-- MLB Stats API venues: https://statsapi.mlb.com/api/v1/venues
-- pybaseball Statcast documentation: https://github.com/jldbc/pybaseball/blob/master/docs/statcast.md
-- MLB Statcast glossary and leaderboards: https://baseballsavant.mlb.com/statcast_leaderboard
+No API key is required for the documented pipeline. Do not commit `.env` files, credentials, raw data, generated databases, model artifacts, exports, logs, or browser profiles. See [SECURITY.md](SECURITY.md) for the publication checklist.
 
-## Current lesson
+Primary sources:
 
-1. Run `python run_pipeline.py --mode sample`.
-2. Open `notebooks/01_pipeline_and_sql_tutorial.ipynb` and run it top to bottom.
-3. Open `outputs/MLB_Excel_Lesson_1.xlsx`.
-4. Recreate the pitch-type summary with an Excel PivotTable.
-5. Explain why whiff rate uses swings, not all pitches, as its denominator.
+- [Baseball Savant CSV documentation](https://baseballsavant.mlb.com/csv-docs)
+- [Baseball Savant Statcast search](https://baseballsavant.mlb.com/statcast_search)
+- [MLB Stats API schedule](https://statsapi.mlb.com/api/v1/schedule)
+- [MLB Stats API venues](https://statsapi.mlb.com/api/v1/venues)
+- [pybaseball Statcast documentation](https://github.com/jldbc/pybaseball/blob/master/docs/statcast.md)
 
-Run the included database tests at any time:
+---
 
-```bash
-python -m unittest discover -s tests -v
+## 繁體中文
+
+### 專案簡介
+
+本專案分析 MLB 投手在不同球數狀態與打者慣用手下，如何改變球種選擇、進壘位置與結果。內容涵蓋描述性分析、出手後球質模型、Fantasy 投手研究工具，以及可切換英文／繁體中文的互動式儀表板。
+
+本專案**不是**比賽勝負預測、運彩模型，也不保證 Fantasy 決策結果。
+
+### 專案亮點
+
+- 透過 `pybaseball` 取得可中斷續跑的 Statcast 資料
+- 整合 MLB 賽程、球場、屋頂狀態與紀錄天氣
+- 使用日期分區 Parquet 與 DuckDB bronze／silver／gold 資料層
+- 展示 SQL JOIN、CTE、視窗函數、條件彙總與資料品質閘門
+- 避免資料洩漏的跨時間揮空率與強擊球機率模型
+- Fantasy Pitching Radar 與未來七天 Stream Planner
+- Tableau 用 CSV 匯出與 Excel 教學活頁簿
+- 可重現的 Jupyter 教學與模型稽核 Notebook
+- 英文／繁體中文 React 儀表板，並可產生單一 HTML 檔案
+- 儀表板中公開資料來源、指標定義、分母與樣本限制
+
+### 系統架構
+
+```mermaid
+flowchart TD
+    A["Baseball Savant Statcast"] --> B["Python 日期分區"]
+    W["MLB 賽程與球場 API"] --> X["比賽情境分區"]
+    B --> C["Bronze：原始 Parquet"]
+    X --> C
+    C --> D["Silver：逐球事實表"]
+    D --> E["Gold：分析摘要"]
+    D --> M["Gold：模型特徵"]
+    M --> N["模型訓練與評分"]
+    E --> F["Excel 與 Tableau 匯出"]
+    D --> H["雙語 React 儀表板"]
+    N --> H
 ```
 
-The prediction feature contract intentionally excludes same-pitch outcomes such
-as descriptions, events, launch metrics, estimated wOBA, run expectancy changes,
-post-pitch scores, and future rest fields. Do not place claims on a resume until
-you can explain every derived flag, denominator, quality check, SQL
-transformation, time split, and model metric.
+逐球事實表每一列代表一球，主鍵為 `game_pk + at_bat_number + pitch_number`。
+
+### 快速開始
+
+需求：Python 3.11+ 與 Node.js/npm。
+
+```powershell
+# 1. 建立 Python 環境
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+
+# 2. 執行小型真實資料流程（2025 年 4 月 1–3 日）
+python run_pipeline.py --mode sample
+
+# 3. 建置儀表板
+Set-Location dashboard
+npm.cmd install
+npm.cmd run build
+```
+
+建置完成後開啟 `dashboard/dist/index.html`。macOS/Linux 請以 `source .venv/bin/activate` 啟用環境，並以 `npm` 取代 `npm.cmd`。
+
+擷取程式會先驗證既有 Parquet 分區再重複使用。Sample 模式只讀取設定中的日期，因此先前的完整球季資料不會悄悄改變教學樣本。
+
+### 完整資料流程
+
+```powershell
+python run_pipeline.py --mode full
+Set-Location dashboard
+npm.cmd run build
+```
+
+Full 模式會處理設定中的 2025 年例行賽，以及 2026 年截至最近完整日期的資料；同時重新整理近期分區、DuckDB、匯出檔、兩個模型、時間序列測試集評分、Fantasy 工具與儀表板快照。
+
+完整模式下載量與執行時間都遠高於 Sample 模式。
+
+### 模型與解讀方式
+
+揮空模型估計球被追蹤後的 `P(whiff | swing)`；強擊球模型則估計合格擊球事件成為強擊球的機率。模型可能使用該球的球速、位移、出手特徵與進壘位置，因此不能描述為投球前預測。
+
+訓練與評估依時間排序：較早球季作為訓練資料，之後依序切分驗證集與未接觸測試集。球員近期狀態、球種歷史與對戰歷史只使用過去事件，並在每場比賽開始前凍結。
+
+模型產物會寫入 `outputs/models/` 與 `outputs/predictions/`。這些資料夾刻意不提交到 Git；若要取得最新結果，請在本機重新產生。
+
+### Fantasy 研究工具
+
+儀表板包含：
+
+- **Fantasy Pitching Radar：**提供 7、14、30 天視窗，以及 Roto 平衡、三振上限與比率保護模式。
+- **Upcoming Stream Planner：**只採用已確認的預定先發，結合投手能力、對手趨勢、球場環境，並另外標示天氣風險。
+- **League Strategy Lab：**針對 Categories 或 Points 類型聯盟提供透明的個人化適配分數。
+- **Player Pool Manager：**可在瀏覽器本機標記 Available、My roster、Watchlist、Unavailable。
+
+這些工具不知道即時自由球員狀態，也無法涵蓋每個聯盟的計分規則；用途是協助研究，而不是保證結果。
+
+### Windows 每日更新
+
+安裝選用的 Windows 工作排程：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_daily_update_task.ps1
+```
+
+手動執行相同流程：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_daily_update.ps1
+```
+
+排程名稱為 `MLB-Pitch-Analytics-Daily-Update`，預設每天本機時間 06:30 執行。狀態與逐日紀錄會寫入已被 Git 排除的 `logs/`。
+
+### 驗證方式
+
+```powershell
+# Python 測試
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v
+
+# 儀表板完整性檢查與正式建置
+Set-Location dashboard
+npm.cmd run verify:runtime
+npm.cmd run build
+```
+
+### 專案結構
+
+```text
+config/                資料日期、模式與本機路徑設定
+data/                  產生的原始／情境／Tableau 資料（Git 排除）
+database/              產生的 DuckDB 資料庫（Git 排除）
+dashboard/             React 原始碼、審查快照與建置工具
+notebooks/             教學與模型評估 Notebook
+outputs/               產生的模型、預測、報告與 Excel 活頁簿
+scripts/               儀表板建置、清理與 Windows 自動化
+sql/                   Silver、Gold 與分析 SQL
+src/                   擷取、轉換、驗證與匯出程式
+tests/                 Python 單元測試與資料品質測試
+```
+
+### 指標定義
+
+- `揮空率 = 揮空次數 / 揮棒次數`
+- `追打率 = 好球帶外揮棒 / 好球帶外投球`
+- `強擊球率 = 初速至少 95 mph 的擊球 / 有效擊球事件`
+- `進壘率 = Statcast 1–9 區投球 / 所有投球`
+
+比較投手前，務必檢查指標分母與最低樣本門檻。
+
+### 資料與安全
+
+文件中的流程不需要 API Key。請勿提交 `.env`、帳密、原始資料、資料庫、模型產物、匯出檔、日誌或瀏覽器設定檔。完整公開檢查清單請參閱 [SECURITY.md](SECURITY.md)。
+
+主要資料來源：
+
+- [Baseball Savant CSV 文件](https://baseballsavant.mlb.com/csv-docs)
+- [Baseball Savant Statcast Search](https://baseballsavant.mlb.com/statcast_search)
+- [MLB Stats API 賽程](https://statsapi.mlb.com/api/v1/schedule)
+- [MLB Stats API 球場](https://statsapi.mlb.com/api/v1/venues)
+- [pybaseball Statcast 文件](https://github.com/jldbc/pybaseball/blob/master/docs/statcast.md)
+
+---
+
+## License / 授權
+
+No license has been added. All rights are reserved unless the repository owner states otherwise.
+
+目前尚未加入授權條款；除非專案擁有者另行說明，否則保留所有權利。
