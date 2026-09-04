@@ -33,6 +33,10 @@ logs/
 .impeccable/
 dashboard/scripts/capture-game-day*.mjs
 
+# Personal practice notes (keep local; do not publish)
+/LESSON_*.md
+/lesson*.md
+
 # Local editor and operating-system files
 .vscode/
 .idea/
