@@ -14,6 +14,9 @@ import {
   useDataApp,
 } from "../../data-app-public.jsx";
 
+import { summarizePitches, pitchLabAnalysis, EMPTY_PITCH_LAB } from "./pitch-analysis.js";
+import PitcherComparison from "./PitcherComparison.jsx";
+
 import { mlbTeamLogos } from "../assets/team-logos.js";
 import { localizeChart, localizeColumns, translateDashboard } from "./i18n.js";
 
@@ -196,10 +199,12 @@ const workspaceStorageKey = "mlb-dashboard-workspace-v1";
 const playerPoolStatuses = ["Available", "My roster", "Watchlist", "Unavailable", "Unclassified"];
 const workspaces = [
   { id: "fantasy", label: "Fantasy", description: "Streams, player pool, and recent form" },
+  { id: "compare", label: "Compare", description: "Compare pitchers and next-start strikeout forecasts" },
   { id: "models", label: "Models", description: "Holdout lift, calibration, and scoring" },
   { id: "pitch-lab", label: "Pitch Lab", description: "Usage, pitch shape, counts, and location" },
 ];
 const workspaceSectionIds = {
+  compare: new Set(),
   fantasy: new Set([
     "dashboard:fantasy-insights",
     "dashboard:fantasy-summary",
@@ -292,10 +297,6 @@ function personalizedStreamFit(row, strikeoutRow, leagueFormat, riskTolerance) {
   return { score: Math.max(0, Math.min(100, scoringBasis - penalty)), penalty };
 }
 
-function sum(rows, field) {
-  return rows.reduce((total, row) => total + (Number(row[field]) || 0), 0);
-}
-
 function safeRate(numerator, denominator) {
   return denominator > 0 ? numerator / denominator : null;
 }
@@ -312,195 +313,6 @@ function formatDecimal(value, digits = 4) {
 
 function hasNumber(value) {
   return value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value));
-}
-
-function uniqueCount(rows, field) {
-  return new Set(rows.map((row) => row[field]).filter((value) => value !== null && value !== undefined)).size;
-}
-
-function aggregatePitchUsage(rows) {
-  const groups = new Map();
-  const totalPitches = sum(rows, "pitch_count");
-  rows.forEach((row) => {
-    const key = row.pitch_name || row.pitch_type || "Unknown";
-    const current = groups.get(key) ?? { pitch_name: key, pitch_count: 0 };
-    current.pitch_count += Number(row.pitch_count) || 0;
-    groups.set(key, current);
-  });
-  return [...groups.values()]
-    .map((row) => ({ ...row, usage_rate: safeRate(row.pitch_count, totalPitches) }))
-    .sort((left, right) => right.pitch_count - left.pitch_count);
-}
-
-function aggregateOutcomeRates(rows, includedPitches) {
-  const groups = new Map();
-  rows.forEach((row) => {
-    const key = row.pitch_name || row.pitch_type || "Unknown";
-    if (!includedPitches.has(key)) return;
-    const current = groups.get(key) ?? {
-      pitch_name: key,
-      pitch_count: 0,
-      swings: 0,
-      whiffs: 0,
-      out_of_zone: 0,
-      chases: 0,
-      batted_balls: 0,
-      hard_hits: 0,
-    };
-    current.pitch_count += Number(row.pitch_count) || 0;
-    current.swings += Number(row.swing_count) || 0;
-    current.whiffs += Number(row.whiff_count) || 0;
-    current.out_of_zone += (Number(row.pitch_count) || 0) - (Number(row.in_zone_count) || 0);
-    current.chases += Number(row.chase_count) || 0;
-    current.batted_balls += Number(row.batted_ball_count) || 0;
-    current.hard_hits += Number(row.hard_hit_count) || 0;
-    groups.set(key, current);
-  });
-  return [...groups.values()].map((row) => ({
-    pitch_name: row.pitch_name,
-    pitch_count: row.pitch_count,
-    whiff_rate: safeRate(row.whiffs, row.swings),
-    chase_rate: safeRate(row.chases, row.out_of_zone),
-    hard_hit_rate: safeRate(row.hard_hits, row.batted_balls),
-  })).sort((left, right) => right.pitch_count - left.pitch_count);
-}
-
-function aggregateCountStrategy(rows, includedPitches) {
-  const totals = new Map();
-  const groups = new Map();
-  rows.forEach((row) => {
-    const pitchName = row.pitch_name || row.pitch_type || "Unknown";
-    const pitchCount = Number(row.pitch_count) || 0;
-    totals.set(row.count_state, (totals.get(row.count_state) ?? 0) + pitchCount);
-    if (!includedPitches.has(pitchName)) return;
-    const key = `${row.count_state}\u0000${pitchName}`;
-    groups.set(key, {
-      count_state: row.count_state,
-      pitch_name: pitchName,
-      pitch_count: (groups.get(key)?.pitch_count ?? 0) + pitchCount,
-    });
-  });
-  return [...groups.values()].map((row) => ({
-    ...row,
-    usage_rate: safeRate(row.pitch_count, totals.get(row.count_state)),
-  }));
-}
-
-function quarterFootBin(value) {
-  if (!Number.isFinite(Number(value))) return null;
-  return (Math.round(Number(value) * 4) / 4).toFixed(2);
-}
-
-function aggregateLocation(rows) {
-  const groups = new Map();
-  rows.forEach((row) => {
-    const plateX = Number(row.plate_x_bin);
-    const plateZ = Number(row.plate_z_bin);
-    if (!Number.isFinite(plateX) || !Number.isFinite(plateZ)
-      || plateX < -2 || plateX > 2 || plateZ < 0 || plateZ > 5) return;
-    const plateXBin = quarterFootBin(plateX);
-    const plateZBin = quarterFootBin(plateZ);
-    const key = `${plateXBin}\u0000${plateZBin}`;
-    groups.set(key, {
-      plate_x_bin: plateXBin,
-      plate_z_bin: plateZBin,
-      pitch_count: (groups.get(key)?.pitch_count ?? 0) + (Number(row.pitch_count) || 0),
-    });
-  });
-  return [...groups.values()].sort((left, right) =>
-    Number(left.plate_z_bin) - Number(right.plate_z_bin)
-      || Number(left.plate_x_bin) - Number(right.plate_x_bin));
-}
-
-function aggregateSeasonPitchMix(rows) {
-  const groups = new Map();
-  rows.forEach((row) => {
-    const season = String(row.season ?? "Unknown");
-    const pitchName = row.pitch_name || row.pitch_type || "Unknown";
-    const key = `${season}\u0000${pitchName}`;
-    groups.set(key, {
-      season,
-      pitch_name: pitchName,
-      pitch_count: (groups.get(key)?.pitch_count ?? 0) + (Number(row.pitch_count) || 0),
-    });
-  });
-  return [...groups.values()].sort((left, right) =>
-    left.season.localeCompare(right.season, undefined, { numeric: true })
-      || right.pitch_count - left.pitch_count);
-}
-
-function aggregateVelocityWhiff(rows) {
-  const groups = new Map();
-  rows.forEach((row) => {
-    const pitchName = row.pitch_name || row.pitch_type || "Unknown";
-    const current = groups.get(pitchName) ?? {
-      name: pitchName,
-      pitch_family: row.pitch_family || "Other",
-      pitch_count: 0,
-      velocity_total: 0,
-      velocity_count: 0,
-      swings: 0,
-      whiffs: 0,
-    };
-    current.pitch_count += Number(row.pitch_count) || 0;
-    current.velocity_total += Number(row.velocity_total) || 0;
-    current.velocity_count += Number(row.velocity_count) || 0;
-    current.swings += Number(row.swing_count) || 0;
-    current.whiffs += Number(row.whiff_count) || 0;
-    groups.set(pitchName, current);
-  });
-  return [...groups.values()].map((row) => ({
-    name: row.name,
-    pitch_family: row.pitch_family,
-    pitch_count: row.pitch_count,
-    avg_velocity: row.velocity_count ? Number((row.velocity_total / row.velocity_count).toFixed(1)) : null,
-    whiff_rate: safeRate(row.whiffs, row.swings),
-  })).filter((row) => Number.isFinite(row.avg_velocity) && Number.isFinite(row.whiff_rate))
-    .sort((left, right) => right.pitch_count - left.pitch_count);
-}
-
-function aggregatePitchers(rows, minimumPitches) {
-  const groups = new Map();
-  rows.forEach((row) => {
-    const key = String(row.pitcher_id);
-    const current = groups.get(key) ?? {
-      pitcher_name: row.pitcher_name || `Pitcher ${key}`,
-      pitcher_team: row.pitcher_team || "—",
-      pitcher_throws: row.pitcher_throws || "—",
-      pitch_count: 0,
-      velocity_total: 0,
-      velocity_count: 0,
-      in_zone: 0,
-      swings: 0,
-      whiffs: 0,
-      out_of_zone: 0,
-      chases: 0,
-      batted_balls: 0,
-      hard_hits: 0,
-    };
-    current.pitch_count += Number(row.pitch_count) || 0;
-    current.velocity_total += Number(row.velocity_total) || 0;
-    current.velocity_count += Number(row.velocity_count) || 0;
-    current.in_zone += Number(row.in_zone_count) || 0;
-    current.swings += Number(row.swing_count) || 0;
-    current.whiffs += Number(row.whiff_count) || 0;
-    current.out_of_zone += (Number(row.pitch_count) || 0) - (Number(row.in_zone_count) || 0);
-    current.chases += Number(row.chase_count) || 0;
-    current.batted_balls += Number(row.batted_ball_count) || 0;
-    current.hard_hits += Number(row.hard_hit_count) || 0;
-    groups.set(key, current);
-  });
-  return [...groups.values()].filter((row) => row.pitch_count >= minimumPitches).map((row) => ({
-    pitcher_name: row.pitcher_name,
-    pitcher_team: row.pitcher_team,
-    pitcher_throws: row.pitcher_throws,
-    pitch_count: row.pitch_count,
-    avg_velocity: row.velocity_count ? Number((row.velocity_total / row.velocity_count).toFixed(1)) : null,
-    zone_rate: safeRate(row.in_zone, row.pitch_count),
-    whiff_rate: safeRate(row.whiffs, row.swings),
-    chase_rate: safeRate(row.chases, row.out_of_zone),
-    hard_hit_rate: safeRate(row.hard_hits, row.batted_balls),
-  })).sort((left, right) => right.pitch_count - left.pitch_count);
 }
 
 export function DashboardContent() {
@@ -554,14 +366,14 @@ export function DashboardContent() {
       return {};
     }
   });
-  const sourceRows = reviewedRows("pitch_summary");
-  const locationSourceRows = reviewedRows("location_density");
-  const modelSourceRows = reviewedRows("model_evaluation");
-  const calibrationSourceRows = reviewedRows("model_calibration");
-  const leaderboardSourceRows = reviewedRows("model_leaderboard");
-  const predictionSourceRows = reviewedRows("pitch_model_predictions");
-  const fantasySourceRows = reviewedRows("fantasy_pitcher_radar");
-  const streamSourceRows = reviewedRows("matchup_stream_planner");
+  const sourceRows = useMemo(() => reviewedRows("pitch_summary"), [reviewedRows]);
+  const locationSourceRows = useMemo(() => reviewedRows("location_density"), [reviewedRows]);
+  const modelSourceRows = useMemo(() => reviewedRows("model_evaluation"), [reviewedRows]);
+  const calibrationSourceRows = useMemo(() => reviewedRows("model_calibration"), [reviewedRows]);
+  const leaderboardSourceRows = useMemo(() => reviewedRows("model_leaderboard"), [reviewedRows]);
+  const predictionSourceRows = useMemo(() => reviewedRows("pitch_model_predictions"), [reviewedRows]);
+  const fantasySourceRows = useMemo(() => reviewedRows("fantasy_pitcher_radar"), [reviewedRows]);
+  const streamSourceRows = useMemo(() => reviewedRows("matchup_stream_planner"), [reviewedRows]);
   const t = (value) => translateDashboard(language, value);
 
   useEffect(() => {
@@ -612,42 +424,16 @@ export function DashboardContent() {
     }
   }, [playerPool]);
 
-  const analysis = useMemo(() => {
-    const pitchUsageRows = aggregatePitchUsage(sourceRows);
-    const includedPitches = new Set(pitchUsageRows.slice(0, 8).map((row) => row.pitch_name));
-    const totalPitches = sum(sourceRows, "pitch_count");
-    const swings = sum(sourceRows, "swing_count");
-    const whiffs = sum(sourceRows, "whiff_count");
-    const inZone = sum(sourceRows, "in_zone_count");
-    const outOfZone = totalPitches - inZone;
-    const chases = sum(sourceRows, "chase_count");
-    const battedBalls = sum(sourceRows, "batted_ball_count");
-    const hardHits = sum(sourceRows, "hard_hit_count");
-    const firstDates = sourceRows.map((row) => row.first_game_date).filter(Boolean).sort();
-    const lastDates = sourceRows.map((row) => row.last_game_date).filter(Boolean).sort();
-    return {
-      totalPitches,
-      pitchUsageRows,
-      outcomeRows: aggregateOutcomeRates(sourceRows, includedPitches),
-      countRows: aggregateCountStrategy(sourceRows, includedPitches),
-      locationRows: aggregateLocation(locationSourceRows),
-      seasonPitchMixRows: aggregateSeasonPitchMix(sourceRows),
-      velocityWhiffRows: aggregateVelocityWhiff(sourceRows),
-      pitcherRows: aggregatePitchers(sourceRows, Number(minimumPitches)),
-      pitchers: uniqueCount(sourceRows, "pitcher_id"),
-      firstDate: firstDates[0] ?? null,
-      lastDate: lastDates.at(-1) ?? null,
-      dateRange: firstDates.length && lastDates.length
-        ? `${firstDates[0]} – ${lastDates.at(-1)}` : t("No reviewed dates"),
-      inZone,
-      swings,
-      whiffs,
-      outOfZone,
-      chases,
-      battedBalls,
-      hardHits,
-    };
-  }, [sourceRows, locationSourceRows, minimumPitches, language]);
+  const pitchSummary = useMemo(() => summarizePitches(sourceRows), [sourceRows]);
+  const lab = useMemo(() => activeWorkspace === "pitch-lab"
+    ? pitchLabAnalysis(sourceRows, locationSourceRows) : EMPTY_PITCH_LAB,
+    [activeWorkspace, sourceRows, locationSourceRows]);
+  const analysis = useMemo(() => ({
+    ...pitchSummary, ...lab,
+    pitcherRows: lab.pitcherRows.filter(row => row.pitch_count >= Number(minimumPitches)),
+    dateRange: pitchSummary.firstDate && pitchSummary.lastDate
+      ? `${pitchSummary.firstDate} – ${pitchSummary.lastDate}` : t("No reviewed dates"),
+  }), [pitchSummary, lab, minimumPitches, language]);
 
   const modelAnalysis = useMemo(() => {
     const whiffChampion = modelSourceRows.find((row) => row.target_key === "whiff" && row.is_champion);
@@ -950,8 +736,8 @@ export function DashboardContent() {
       id: "hard-hit-rate",
       title: t("Hard-hit rate"),
       description: t("Batted balls at 95 mph or harder divided by reviewed batted-ball events."),
-      value: formatRate(safeRate(analysis.hardHits, analysis.battedBalls)),
-      comparison: language === "zh-TW" ? `${compact(analysis.hardHits)} 顆強擊球 / ${compact(analysis.battedBalls)} 次擊球事件` : `${compact(analysis.hardHits)} hard hits / ${compact(analysis.battedBalls)} BBE`,
+      value: formatRate(safeRate(analysis.hardHits, analysis.measuredBattedBalls)),
+      comparison: language === "zh-TW" ? `${compact(analysis.hardHits)} 顆強擊球 / ${compact(analysis.measuredBattedBalls)} 次有效測量（全部 ${compact(analysis.battedBalls)} 次）` : `${compact(analysis.hardHits)} hard hits / ${compact(analysis.measuredBattedBalls)} measured BBE (${compact(analysis.battedBalls)} total)`,
     },
   ];
 
@@ -1445,7 +1231,8 @@ export function DashboardContent() {
         </DataComponent>
       </div>
     </section>}
-    <SortableRegion id={`dashboard:mlb:${activeWorkspace}`} label={t("MLB pitch analytics blocks")}
+    {activeWorkspace === "compare" && <PitcherComparison language={language} />}
+    {activeRows.length > 0 && <SortableRegion id={`dashboard:mlb:${activeWorkspace}`} label={t("MLB pitch analytics blocks")}
       variant="canvas" spacing="standard" authoredRevision={7} columns={12} rows={activeRows}>
       {streamMetrics.filter(({ id }) => show(id)).map(({ id, title, description, value, comparison, sourceRows: metricRows }) =>
         <SortableItem key={id} id={id} label={title} kind="metric" span={3} minSpan={2}>
@@ -1718,7 +1505,7 @@ export function DashboardContent() {
             compactNumbers={false} pageSize={10} label={t("Reviewed pitcher comparison")} />
         </DataComponent>
       </SortableItem>}
-    </SortableRegion>
+    </SortableRegion>}
     </div>
   </article>;
 }

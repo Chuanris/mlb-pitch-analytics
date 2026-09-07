@@ -186,30 +186,23 @@ def assert_feature_contract(columns: list[str]) -> None:
         raise ValueError(f"Duplicate model features: {duplicated}")
 
 
-def make_time_split(frame: pd.DataFrame) -> TimeSplit:
+def make_time_split(frame: pd.DataFrame, boundaries: dict | None = None) -> TimeSplit:
+    # Explicit calendar boundaries keep benchmark membership stable as data grows.
+    if boundaries is None:
+        boundaries = load_config("config/pipeline_config.json")["model_evaluation"]
+    train_end, validation_start, test_start, test_end = (
+        pd.Timestamp(boundaries[key]) for key in
+        ("train_end", "validation_start", "test_start", "test_end")
+    )
+    if any(pd.isna(value) for value in (train_end, validation_start, test_start, test_end)) or not (
+        train_end < validation_start < test_start <= test_end
+    ):
+        raise ValueError("Model evaluation requires train_end < validation_start < test_start <= test_end")
     data = frame.copy()
     data["game_date"] = pd.to_datetime(data["game_date"])
-    seasons = sorted(data["season"].dropna().astype(int).unique().tolist())
-    if len(seasons) < 2:
-        raise ValueError("Model evaluation requires at least two seasons for an out-of-time split.")
-
-    training_seasons = seasons[:-1]
-    holdout_season = seasons[-1]
-    holdout_dates = np.sort(
-        data.loc[data["season"] == holdout_season, "game_date"].dropna().unique()
-    )
-    if len(holdout_dates) < 2:
-        raise ValueError("The latest season needs at least two game dates.")
-    midpoint = len(holdout_dates) // 2
-    test_start = pd.Timestamp(holdout_dates[midpoint])
-
-    train = data[data["season"].isin(training_seasons)].copy()
-    validation = data[
-        (data["season"] == holdout_season) & (data["game_date"] < test_start)
-    ].copy()
-    test = data[
-        (data["season"] == holdout_season) & (data["game_date"] >= test_start)
-    ].copy()
+    train = data[data["game_date"] <= train_end].copy()
+    validation = data[data["game_date"].between(validation_start, test_start, inclusive="left")].copy()
+    test = data[data["game_date"].between(test_start, test_end)].copy()
     if train.empty or validation.empty or test.empty:
         raise ValueError("Chronological split produced an empty partition.")
     if train["game_date"].max() >= validation["game_date"].min():
@@ -499,7 +492,7 @@ def main() -> None:
     finally:
         connection.close()
 
-    split = make_time_split(frame)
+    split = make_time_split(frame, config["model_evaluation"])
     partitions = {
         "train": limit_rows(split.train, args.max_rows_per_split, 42),
         "validation": limit_rows(split.validation, args.max_rows_per_split, 43),
@@ -736,6 +729,7 @@ def main() -> None:
         "prediction_horizon": "post_release_pitch_quality",
         "target": "whiff conditional on a recorded swing",
         "seasons": sorted(frame["season"].astype(int).unique().tolist()),
+        "evaluation_boundaries": config["model_evaluation"],
         "split": {
             "train_end": train["game_date"].max().date().isoformat(),
             "validation_start": partitions["validation"]["game_date"].min().date().isoformat(),
@@ -820,4 +814,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from src.artifact_lineage import run_versioned
+    run_versioned("train_whiff_model", main)

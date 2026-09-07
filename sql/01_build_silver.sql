@@ -80,6 +80,8 @@ WITH cleaned AS (
         END AS batted_ball_flag,
         CASE
             WHEN description IN ('hit_into_play', 'hit_into_play_no_out', 'hit_into_play_score')
+             AND launch_speed IS NULL THEN NULL
+            WHEN description IN ('hit_into_play', 'hit_into_play_no_out', 'hit_into_play_score')
              AND launch_speed >= 95 THEN 1 ELSE 0
         END AS hard_hit_flag,
         CASE

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from uuid import uuid4
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -139,6 +140,11 @@ def main() -> None:
         execute_sql_file(connection, sql_dir / "00_build_game_context.sql")
         execute_sql_file(connection, sql_dir / "01_build_silver.sql")
         execute_sql_file(connection, sql_dir / "02_build_gold.sql")
+        connection.execute(
+            "CREATE OR REPLACE TABLE metadata.dataset_version AS "
+            "SELECT ?::VARCHAR AS run_id, ?::VARCHAR AS mode, MAX(game_date) AS data_through "
+            "FROM silver.fact_pitch", [str(uuid4()), args.mode],
+        )
 
         connection.execute(
             """

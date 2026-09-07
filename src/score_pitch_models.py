@@ -122,18 +122,25 @@ def score_target(
     connection: duckdb.DuckDBPyConnection,
     model_dir: Path,
     spec: TargetSpec,
+    recent_through: str | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     manifest = load_manifest(model_dir, spec)
     base_model = manifest.get("champion_base_model", manifest["champion"])
     artifact = joblib.load(model_dir / f"{spec.artifact_prefix}_{base_model}.joblib")
     features = artifact["features"]
     split = manifest["split"]
+    start, end = split["test_start"], split["test_end"]
+    if recent_through is not None:
+        # Two 30-day windows support current/previous Fantasy comparisons. Never
+        # score validation observations as independent recent monitoring data.
+        end = recent_through
+        start = max(start, (pd.Timestamp(end) - pd.Timedelta(days=59)).date().isoformat())
     frame = load_scoring_frame(
         connection,
         spec,
         features,
-        split["test_start"],
-        split["test_end"],
+        start,
+        end,
     )
     predicted = artifact["pipeline"].predict_proba(frame[features])[:, 1]
     if spec.key == "whiff" and manifest.get("probability_calibration", {}).get("accepted"):
@@ -294,11 +301,14 @@ def main() -> None:
         description="Score untouched-test pitches with the validation-selected champion models."
     )
     parser.add_argument("--config", default="config/pipeline_config.json")
+    parser.add_argument("--recent-only", action="store_true", help="Reuse the frozen model release and benchmark; refresh recent scores only.")
     parser.add_argument(
         "--target", choices=["all", *TARGETS], default="all",
         help="Target to score; defaults to both whiff and hard-hit models.",
     )
     args = parser.parse_args()
+    if args.recent_only and args.target != "all":
+        parser.error("--recent-only requires --target all")
 
     config = load_config(args.config)
     database_path = project_path(config["paths"]["database"])
@@ -307,12 +317,21 @@ def main() -> None:
     prediction_dir = outputs_dir / "predictions"
     prediction_dir.mkdir(parents=True, exist_ok=True)
     requested = list(TARGETS) if args.target == "all" else [args.target]
+    release = None
+    if args.recent_only:
+        from src.model_release import verify_release
+        release = verify_release(config)
 
     connection = duckdb.connect(str(database_path), read_only=True)
     try:
-        scored_frames = {
+        scored_frames = {} if args.recent_only else {
             target_key: score_target(connection, model_dir, TARGETS[target_key])[0]
             for target_key in requested
+        }
+        data_through = str(connection.execute("SELECT MAX(game_date) FROM silver.fact_pitch").fetchone()[0])
+        recent_frames = {
+            key: score_target(connection, model_dir, TARGETS[key], recent_through=data_through)[0]
+            for key in requested
         }
     finally:
         connection.close()
@@ -321,8 +340,14 @@ def main() -> None:
         scored.to_parquet(
             prediction_dir / f"{target_key}_test_predictions.parquet", index=False
         )
+    for target_key in requested:
+        recent_frames[target_key].to_parquet(
+            prediction_dir / f"{target_key}_recent_predictions.parquet", index=False
+        )
 
-    if set(scored_frames) == set(TARGETS):
+    if args.recent_only:
+        leaderboards = None
+    elif set(scored_frames) == set(TARGETS):
         leaderboards = build_leaderboards(scored_frames)
         leaderboards.to_csv(prediction_dir / "model_leaderboards.csv", index=False)
     else:
@@ -339,7 +364,12 @@ def main() -> None:
     manifest = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "scope": "untouched chronological test windows",
-        "targets": {
+        "recent_monitoring": {
+            "scope": "post-release scores for the latest 60 calendar days, after validation only; separate from benchmark metrics",
+            "data_through": data_through,
+            "rows": {key: len(frame) for key, frame in recent_frames.items()},
+        },
+        "targets": release["benchmark_targets"] if release else {
             key: {
                 "rows": int(len(scored)),
                 "start": scored["game_date"].min().date().isoformat(),
@@ -349,17 +379,20 @@ def main() -> None:
             }
             for key, scored in scored_frames.items()
         },
-        "leaderboard_rows": int(len(leaderboards)),
+        "leaderboard_rows": release["leaderboard_rows"] if release else int(len(leaderboards)),
+        "workflow": "daily" if args.recent_only else "retrain",
+        "model_training_dataset": release["dataset"] if release else None,
     }
     (prediction_dir / "prediction_manifest.json").write_text(
         json.dumps(manifest, indent=2), encoding="utf-8"
     )
     details = ", ".join(
-        f"{key}={len(scored):,}" for key, scored in scored_frames.items()
+        f"{key}={len(scored):,}" for key, scored in recent_frames.items()
     )
-    print(f"Scored pitches: {details}; leaderboard rows={len(leaderboards):,}")
+    print(f"Recent scored pitches: {details}; benchmark leaderboard rows={manifest['leaderboard_rows']:,}")
     print(f"Artifacts: {prediction_dir}")
 
 
 if __name__ == "__main__":
-    main()
+    from src.artifact_lineage import run_versioned
+    run_versioned("score_pitch_models", main)

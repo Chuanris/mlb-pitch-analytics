@@ -218,7 +218,7 @@ def main() -> None:
     finally:
         connection.close()
 
-    split = make_time_split(frame)
+    split = make_time_split(frame, config["model_evaluation"])
     partitions = {
         "train": limit_rows(split.train, args.max_rows_per_split, 52),
         "validation": limit_rows(split.validation, args.max_rows_per_split, 53),
@@ -378,6 +378,7 @@ def main() -> None:
         "prediction_horizon": "post_release_contact_quality",
         "target": "hard hit at 95+ mph conditional on a batted ball",
         "seasons": sorted(frame["season"].astype(int).unique().tolist()),
+        "evaluation_boundaries": config["model_evaluation"],
         "split": {
             "train_end": train["game_date"].max().date().isoformat(),
             "validation_start": partitions["validation"]["game_date"].min().date().isoformat(),
@@ -445,4 +446,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from src.artifact_lineage import run_versioned
+    run_versioned("train_hard_hit_model", main)

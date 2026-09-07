@@ -53,7 +53,7 @@ def safe_rate(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
 def load_predictions(prediction_dir: Path) -> dict[str, pd.DataFrame]:
     frames = {}
     for target_key in ("whiff", "hard_hit"):
-        frame = pd.read_parquet(prediction_dir / f"{target_key}_test_predictions.parquet")
+        frame = pd.read_parquet(prediction_dir / f"{target_key}_recent_predictions.parquet")
         frame["game_date"] = pd.to_datetime(frame["game_date"])
         frames[target_key] = frame
     return frames
@@ -83,6 +83,7 @@ def period_pitcher_metrics(
             SUM(chase_flag)::BIGINT AS chases,
             SUM(CASE WHEN in_zone_flag = 0 THEN 1 ELSE 0 END)::BIGINT AS out_of_zone_pitches,
             SUM(batted_ball_flag)::BIGINT AS batted_balls,
+            COUNT(*) FILTER (WHERE batted_ball_flag = 1 AND hard_hit_flag IS NOT NULL) AS measured_batted_balls,
             SUM(hard_hit_flag)::BIGINT AS hard_hits,
             AVG(release_speed) AS avg_velocity,
             MIN(game_date) AS first_game_date,
@@ -143,7 +144,7 @@ def qualify_and_score(
     frame["k_minus_bb_rate"] = frame["strikeout_rate"] - frame["walk_rate"]
     frame["whiff_rate"] = safe_rate(frame["whiffs"], frame["swings"])
     frame["chase_rate"] = safe_rate(frame["chases"], frame["out_of_zone_pitches"])
-    frame["hard_hit_rate_allowed"] = safe_rate(frame["hard_hits"], frame["batted_balls"])
+    frame["hard_hit_rate_allowed"] = safe_rate(frame["hard_hits"], frame["measured_batted_balls"])
     frame["traffic_rate"] = safe_rate(
         frame["hits_allowed"] + frame["walks"], frame["batters_faced"]
     )
@@ -365,4 +366,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from src.artifact_lineage import run_versioned
+    run_versioned("build_fantasy_pitcher_radar", main)

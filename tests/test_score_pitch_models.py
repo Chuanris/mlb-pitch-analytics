@@ -15,6 +15,17 @@ MODEL_DIR = PROJECT_ROOT / "outputs" / "models"
 
 
 class PitchModelScoringTests(unittest.TestCase):
+    def test_recent_monitoring_is_separate_and_supports_two_30_day_windows(self):
+        manifest = json.loads((PREDICTION_DIR / "prediction_manifest.json").read_text())
+        end = pd.Timestamp(manifest["recent_monitoring"]["data_through"])
+        for target in TARGETS:
+            recent = pd.read_parquet(PREDICTION_DIR / f"{target}_recent_predictions.parquet")
+            dates = pd.to_datetime(recent["game_date"])
+            self.assertEqual(len(recent), manifest["recent_monitoring"]["rows"][target])
+            self.assertTrue(dates.between(end - pd.Timedelta(days=59), end).all())
+            self.assertEqual(dates.max(), end)
+            self.assertFalse(recent["pitch_id"].duplicated().any())
+
     def test_leaderboard_direction_rewards_more_whiffs(self):
         frame = pd.DataFrame(
             {

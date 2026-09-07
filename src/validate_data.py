@@ -10,6 +10,22 @@ from src.common import load_config, project_path
 
 
 CHECKS = [
+    ("completed_regular_games_have_pitches", """
+        SELECT COUNT(*) = 0 FROM silver.fact_game_context AS context
+        WHERE context.game_status IN ('Final', 'Game Over', 'Completed Early')
+          AND EXISTS (SELECT 1 FROM metadata.pipeline_ranges AS ranges
+                      WHERE context.official_date BETWEEN ranges.start_date AND ranges.end_date)
+          AND NOT EXISTS (SELECT 1 FROM silver.fact_pitch AS pitch WHERE pitch.game_pk = context.game_pk)
+    """, True),
+    ("missing_exit_velocity_is_unknown", """
+        SELECT COUNT(*) = 0 FROM silver.fact_pitch
+        WHERE batted_ball_flag = 1 AND launch_speed IS NULL AND hard_hit_flag IS NOT NULL
+    """, True),
+    ("measured_hard_hit_labels_match_threshold", """
+        SELECT COUNT(*) = 0 FROM silver.fact_pitch
+        WHERE batted_ball_flag = 1 AND launch_speed IS NOT NULL
+          AND (hard_hit_flag IS NULL OR hard_hit_flag <> CASE WHEN launch_speed >= 95 THEN 1 ELSE 0 END)
+    """, True),
     ("fact_has_rows", "SELECT COUNT(*) > 0 FROM silver.fact_pitch", True),
     (
         "pitch_id_is_unique",
@@ -154,7 +170,7 @@ CHECKS = [
         SELECT
             (SELECT COUNT(*) FROM gold.training_pitch_hard_hit)
             =
-            (SELECT SUM(batted_ball_flag) FROM silver.fact_pitch)
+            (SELECT COUNT(*) FROM silver.fact_pitch WHERE batted_ball_flag = 1 AND hard_hit_flag IS NOT NULL)
         """,
         True,
     ),
@@ -454,6 +470,15 @@ def main() -> None:
         FROM silver.fact_pitch
         """
     ).fetchone()
+    coverage = connection.execute("""
+        SELECT season, SUM(batted_ball_flag) AS batted_balls,
+               COUNT(*) FILTER (WHERE batted_ball_flag = 1 AND launch_speed IS NOT NULL) AS measured_batted_balls,
+               COUNT(*) FILTER (WHERE batted_ball_flag = 1 AND launch_speed IS NULL) AS missing_exit_velocity,
+               COUNT(*) FILTER (WHERE batted_ball_flag = 1 AND launch_speed IS NOT NULL)::DOUBLE
+                 / NULLIF(SUM(batted_ball_flag), 0) AS measurement_coverage
+        FROM silver.fact_pitch GROUP BY season ORDER BY season
+    """).fetchdf()
+    coverage.to_csv(outputs_dir / "measurement_coverage.csv", index=False)
     connection.close()
 
     report_path = outputs_dir / "data_quality_report.csv"

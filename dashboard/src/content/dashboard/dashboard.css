@@ -123,7 +123,7 @@
 }
 
 .mlb-command-header .mlb-language-switch button:first-child { border-left: 0; }
-.mlb-command-header .mlb-language-switch button[aria-pressed="true"] { color: var(--gdi-ink); text-decoration: underline; text-underline-offset: 5px; }
+.mlb-command-header .mlb-language-switch button[aria-pressed="true"] { background: var(--gdi-ink); color: var(--gdi-paper); text-decoration: underline; text-underline-offset: 5px; }
 
 .mlb-workspace-panel--fantasy { padding-top: 0; }
 .mlb-workspace-panel--fantasy > .mlb-workspace-heading { display: none; }
@@ -331,7 +331,7 @@
 @media (max-width: 820px) {
   .mlb-command-header { position: relative; display: grid; grid-template-columns: 1fr; }
   .mlb-command-brand { min-height: 74px; padding-right: 104px; }
-  .mlb-command-header .mlb-workspace-nav { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--gdi-rule); }
+  .mlb-command-header .mlb-workspace-nav { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--gdi-rule); }
   .mlb-command-header .mlb-workspace-nav button { min-width: 0; min-height: 48px; padding-inline: 8px; }
   .mlb-command-header .mlb-language-switch { position: absolute; top: 3px; right: 0; min-height: 70px; border-left: 1px solid var(--gdi-rule); }
   .mlb-game-day__heading { align-items: start; flex-direction: column; gap: 8px; }
@@ -2190,3 +2190,14 @@
 /* Final cascade guard: the Fantasy command surface starts directly below the masthead. */
 .mlb-dashboard .mlb-workspace-panel--fantasy { padding-top: 0; }
 .mlb-dashboard .mlb-workspace-panel--fantasy > .mlb-workspace-heading { display: none; }
+
+.mlb-comparison { display: grid; gap: 24px; min-width: 0; }
+.mlb-comparison-selectors { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.mlb-comparison-selectors label { display: grid; gap: 8px; font-size: 14px; color: var(--text); }
+.mlb-comparison-selectors select { width: 100%; min-height: 44px; padding: 8px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); font: inherit; }
+.mlb-comparison-selectors select:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.mlb-comparison-note { color: var(--secondary); font-size: 14px; line-height: 1.6; margin: 0 0 16px; }
+@media (max-width: 700px) {
+  .mlb-comparison-selectors { grid-template-columns: 1fr; }
+  .mlb-comparison { gap: 16px; }
+}

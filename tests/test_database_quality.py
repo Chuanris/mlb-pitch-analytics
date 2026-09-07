@@ -11,6 +11,26 @@ DATABASE_PATH = PROJECT_ROOT / "database" / "mlb_pitch_analytics.duckdb"
 
 
 class DatabaseQualityTests(unittest.TestCase):
+    def test_unknown_exit_velocity_never_becomes_negative_training_label(self):
+        unknown, mislabeled, leaked = self.connection.execute("""
+            SELECT
+                COUNT(*) FILTER (WHERE p.batted_ball_flag = 1 AND p.launch_speed IS NULL),
+                COUNT(*) FILTER (WHERE p.batted_ball_flag = 1 AND p.launch_speed IS NULL AND p.hard_hit_flag IS NOT NULL),
+                COUNT(*) FILTER (WHERE p.batted_ball_flag = 1 AND p.launch_speed IS NULL AND t.pitch_id IS NOT NULL)
+            FROM silver.fact_pitch p LEFT JOIN gold.training_pitch_hard_hit t USING (pitch_id)
+        """).fetchone()
+        self.assertEqual(mislabeled, 0)
+        self.assertEqual(leaked, 0)
+
+    def test_summary_hard_hit_rates_use_measured_denominator(self):
+        invalid = self.connection.execute("""
+            SELECT COUNT(*) FROM gold.pitcher_pitch_type_summary
+            WHERE measured_batted_ball_count > batted_ball_count
+               OR ABS(hard_hit_rate - hard_hit_count::DOUBLE / NULLIF(measured_batted_ball_count, 0)) > 1e-12
+               OR (measured_batted_ball_count = 0 AND hard_hit_rate IS NOT NULL)
+        """).fetchone()[0]
+        self.assertEqual(invalid, 0)
+
     @classmethod
     def setUpClass(cls):
         cls.connection = duckdb.connect(str(DATABASE_PATH), read_only=True)
@@ -149,7 +169,7 @@ class DatabaseQualityTests(unittest.TestCase):
             """
             SELECT
                 (SELECT COUNT(*) FROM gold.training_pitch_hard_hit),
-                (SELECT SUM(batted_ball_flag) FROM silver.fact_pitch)
+                (SELECT COUNT(*) FROM silver.fact_pitch WHERE batted_ball_flag = 1 AND hard_hit_flag IS NOT NULL)
             """
         ).fetchone()
         self.assertEqual(training_rows, batted_ball_rows)

@@ -110,6 +110,7 @@ def recent_opponent_metrics(
             SUM(CASE WHEN plate_appearance_event IN ('strikeout', 'strikeout_double_play') THEN 1 ELSE 0 END)::BIGINT AS strikeouts,
             SUM(CASE WHEN plate_appearance_event = 'walk' THEN 1 ELSE 0 END)::BIGINT AS walks,
             SUM(batted_ball_flag)::BIGINT AS batted_balls,
+            COUNT(*) FILTER (WHERE batted_ball_flag = 1 AND hard_hit_flag IS NOT NULL) AS measured_batted_balls,
             SUM(hard_hit_flag)::BIGINT AS hard_hits
         FROM silver.fact_pitch
         WHERE game_date BETWEEN ? AND ?
@@ -120,7 +121,7 @@ def recent_opponent_metrics(
     frame["opponent_team"] = frame["opponent_team"].map(normalize_team)
     frame["opponent_strikeout_rate"] = frame["strikeouts"] / frame["plate_appearances"]
     frame["opponent_walk_rate"] = frame["walks"] / frame["plate_appearances"]
-    frame["opponent_hard_hit_rate"] = frame["hard_hits"] / frame["batted_balls"]
+    frame["opponent_hard_hit_rate"] = frame["hard_hits"] / frame["measured_batted_balls"].replace(0, np.nan)
     frame["strikeout_favorability_percentile"] = frame["opponent_strikeout_rate"].rank(
         method="average", pct=True
     )
@@ -145,6 +146,7 @@ def park_metrics(connection: duckdb.DuckDBPyConnection) -> pd.DataFrame:
             context.venue_id,
             ARG_MAX(context.venue_name, pitch.game_date) AS venue_name,
             SUM(pitch.batted_ball_flag)::BIGINT AS park_batted_balls,
+            COUNT(*) FILTER (WHERE pitch.batted_ball_flag = 1 AND pitch.hard_hit_flag IS NOT NULL) AS park_measured_batted_balls,
             SUM(pitch.hard_hit_flag)::BIGINT AS park_hard_hits,
             COUNT(pitch.plate_appearance_event) FILTER (
                 WHERE pitch.plate_appearance_event IS NOT NULL
@@ -157,7 +159,7 @@ def park_metrics(connection: duckdb.DuckDBPyConnection) -> pd.DataFrame:
         HAVING park_batted_balls >= 500 AND park_plate_appearances >= 1000
         """
     ).fetchdf()
-    frame["park_hard_hit_rate"] = frame["park_hard_hits"] / frame["park_batted_balls"]
+    frame["park_hard_hit_rate"] = frame["park_hard_hits"] / frame["park_measured_batted_balls"].replace(0, np.nan)
     frame["park_home_run_rate"] = frame["park_home_runs"] / frame["park_plate_appearances"]
     frame["park_contact_suppression_signal"] = 100.0 * (
         0.60 * frame["park_hard_hit_rate"].rank(method="average", pct=True, ascending=False)
@@ -495,4 +497,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from src.artifact_lineage import run_versioned
+    run_versioned("build_matchup_stream_planner", main)

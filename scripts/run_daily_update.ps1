@@ -1,6 +1,7 @@
 param(
     [ValidateRange(0, 14)]
-    [int]$RefreshDays = 3
+    [int]$RefreshDays = 3,
+    [switch]$Retrain
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,7 +37,8 @@ try {
     $transcriptStarted = $true
     Set-Location -LiteralPath $repoRoot
 
-    & $pythonPath "run_pipeline.py" --mode full --refresh-days $RefreshDays
+    $workflow = if ($Retrain) { "retrain" } else { "daily" }
+    & $pythonPath "run_pipeline.py" --mode full --workflow $workflow --refresh-days $RefreshDays
     if ($LASTEXITCODE -ne 0) {
         throw "MLB pipeline failed with exit code $LASTEXITCODE."
     }
@@ -51,6 +53,7 @@ try {
         started_at_utc = $startedAt.ToString("o")
         finished_at_utc = [DateTime]::UtcNow.ToString("o")
         refresh_days = $RefreshDays
+        workflow = $workflow
         dashboard = "dashboard/dist/index.html"
     }
     $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding utf8
@@ -61,6 +64,7 @@ try {
         started_at_utc = $startedAt.ToString("o")
         finished_at_utc = [DateTime]::UtcNow.ToString("o")
         refresh_days = $RefreshDays
+        workflow = $workflow
         error = $_.Exception.Message
     }
     $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding utf8

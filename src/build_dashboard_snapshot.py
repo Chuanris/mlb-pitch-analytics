@@ -59,6 +59,7 @@ SELECT
     SUM(whiff_flag)::BIGINT AS whiff_count,
     SUM(chase_flag)::BIGINT AS chase_count,
     SUM(batted_ball_flag)::BIGINT AS batted_ball_count,
+    COUNT(*) FILTER (WHERE batted_ball_flag = 1 AND hard_hit_flag IS NOT NULL) AS measured_batted_ball_count,
     SUM(hard_hit_flag)::BIGINT AS hard_hit_count,
     ROUND(SUM(release_speed), 2) AS velocity_total,
     COUNT(release_speed)::BIGINT AS velocity_count,
@@ -119,8 +120,8 @@ def summary_metric_definitions() -> list[dict]:
         },
         {
             "label": "Hard-hit rate",
-            "definition": "Batted balls with launch speed of at least 95 mph divided by reviewed batted-ball events.",
-            "formula": "SUM(hard_hit_count) / SUM(batted_ball_count)",
+            "definition": "Batted balls with launch speed of at least 95 mph divided by batted-ball events with measured exit velocity; missing measurements are excluded.",
+            "formula": "SUM(hard_hit_count) / SUM(measured_batted_ball_count)",
             "componentIds": ["hard-hit-rate", "outcome-rates", "pitcher-table"],
             "sourceLineage": source,
         },
@@ -320,6 +321,41 @@ def model_calibration_rows(outputs_dir: Path) -> list[dict]:
     return sorted(rows, key=lambda row: (row["series"], row["predicted_rate"]))
 
 
+def starter_forecast_queries(outputs_dir: Path, mode: str) -> dict:
+    specifications = {
+        "starter_live_monitor": ("live_monitor.csv", "Live first-forecast outcomes by archived model version; excludes historical backtests", "starter-live-monitor"),
+        "pitcher_comparison": ("comparison.csv", "Pitcher comparison: recent observed skill and next-start baseline", "pitcher-comparison"),
+        "starter_forecasts": ("upcoming.csv", "Timestamped pregame strikeout baselines for confirmed probable starters", "starter-forecast-table"),
+        "starter_forecast_evaluation": ("evaluation.csv", "Fixed out-of-time evaluation of pregame starter strikeout baselines", "starter-forecast-evaluation"),
+        "starter_forecast_history": ("forecast_history.csv", "First archived pregame forecast per game and pitcher, with observed outcomes", "starter-forecast-history"),
+    }
+    queries = {
+        key: {"rows": dataframe_rows(pd.read_csv(outputs_dir / "forecast" / filename)) if mode == "full" else [],
+              "source": {"label": label, "tables": ["silver.fact_pitch", "silver.fact_game_context"],
+                         "files": [f"outputs/forecast/{filename}", "outputs/forecast/model_manifest.json"],
+                         "filters": ["Pregame features use completed games from earlier calendar dates only.",
+                                     "Model selected on early validation; interval calibrated on separate validation tail.",
+                                     "Retrospective backtest covers observed first pitchers, not historical probable-starter announcements.",
+                                     "Prediction intervals target 80% empirical coverage; future coverage is not guaranteed.",
+                                     "No lineup, injury or weather adjustments; lack of a confirmed future start is not a zero prediction."],
+                         "metricDefinitions": [{"label": "Next-start strikeouts", "definition": label,
+                                                "formula": "recent_starts = (K in last 5 starts + 3 * training mean K per start) / (prior start count + 3). Alternative baselines: training league mean; projected BF * smoothed K rate * opponent adjustment. MAE = mean(abs(predicted K - actual K)).",
+                                                "componentIds": [component],
+                                                "sourceLineage": [{"files": [f"outputs/forecast/{filename}", "outputs/forecast/model_manifest.json"]}]}]}}
+        for key, (filename, label, component) in specifications.items()
+    }
+    queries["pitcher_comparison"]["source"]["files"].extend([
+        "outputs/fantasy/pitcher_fantasy_radar.csv", "outputs/forecast/upcoming.csv"])
+    archives = sorted({row["archive_file"] for row in queries["starter_forecast_history"]["rows"] if row.get("archive_file")})
+    queries["starter_forecast_history"]["source"]["files"].extend(archives)
+    queries["starter_live_monitor"]["source"]["files"].extend(["outputs/forecast/forecast_history.csv", *archives])
+    queries["starter_live_monitor"]["source"]["metricDefinitions"] = [{
+        "label": "Live forecast monitoring", "definition": "Observed first archived predictions grouped by model version; pending and excluded outcomes never enter error denominators.",
+        "formula": "MAE=mean(abs(predicted-actual)); RMSE=sqrt(mean((predicted-actual)^2)); bias=mean(predicted-actual). Coverage uses only observed rows with valid archived bounds. Fewer than 30 observations is labeled limited sample; 30 is a display threshold, not statistical validation.",
+        "componentIds": ["starter-live-monitor"]}]
+    return queries
+
+
 def build_snapshot(database_path: Path, outputs_dir: Path) -> dict:
     connection = duckdb.connect(str(database_path), read_only=True)
     try:
@@ -344,12 +380,12 @@ def build_snapshot(database_path: Path, outputs_dir: Path) -> dict:
         "whiff": float(whiff_matchup_coverage),
         "hard_hit": float(hard_hit_matchup_coverage),
     }
-    evaluation_rows = model_evaluation_rows(outputs_dir, matchup_coverage)
-    calibration_rows = model_calibration_rows(outputs_dir)
-    leaderboard_rows = prediction_leaderboard_rows(outputs_dir)
-    prediction_rows = latest_pitch_prediction_rows(outputs_dir)
-    fantasy_rows = fantasy_pitcher_radar_rows(outputs_dir)
-    stream_planner_rows = matchup_stream_planner_rows(outputs_dir)
+    evaluation_rows = model_evaluation_rows(outputs_dir, matchup_coverage) if mode == "full" else []
+    calibration_rows = model_calibration_rows(outputs_dir) if mode == "full" else []
+    leaderboard_rows = prediction_leaderboard_rows(outputs_dir) if mode == "full" else []
+    prediction_rows = latest_pitch_prediction_rows(outputs_dir) if mode == "full" else []
+    fantasy_rows = fantasy_pitcher_radar_rows(outputs_dir) if mode == "full" else []
+    stream_planner_rows = matchup_stream_planner_rows(outputs_dir) if mode == "full" else []
 
     season_label = str(start_season) if start_season == end_season else f"{start_season}-{end_season}"
     caveats = [
@@ -377,6 +413,7 @@ def build_snapshot(database_path: Path, outputs_dir: Path) -> dict:
             {"id": "pitchFamily", "label": "Pitch family", "field": "pitch_family", "defaultValue": "all", "queryIds": [SUMMARY_QUERY_ID, LOCATION_QUERY_ID]},
         ],
         "queries": {
+            **starter_forecast_queries(outputs_dir, mode),
             SUMMARY_QUERY_ID: {
                 "rows": summary_rows,
                 "reportingField": "last_game_date",
@@ -414,7 +451,7 @@ def build_snapshot(database_path: Path, outputs_dir: Path) -> dict:
                         "2025 trains the models; early 2026 is validation; later 2026 is untouched test.",
                         "Champion selection uses validation, never test performance.",
                         "Whiff uses swings; hard hit uses batted-ball events.",
-                        f"Untouched test window: {evaluation_rows[0]['test_start']} through {evaluation_rows[0]['test_end']}.",
+                        (f"Untouched test window: {evaluation_rows[0]['test_start']} through {evaluation_rows[0]['test_end']}." if evaluation_rows else "Model evaluation is unavailable in sample mode."),
                     ],
                     "metricDefinitions": [
                         {
@@ -528,8 +565,8 @@ def build_snapshot(database_path: Path, outputs_dir: Path) -> dict:
                     "files": [
                         "outputs/fantasy/pitcher_fantasy_radar.csv",
                         "outputs/fantasy/fantasy_radar_manifest.json",
-                        "outputs/predictions/whiff_test_predictions.parquet",
-                        "outputs/predictions/hard_hit_test_predictions.parquet",
+                        "outputs/predictions/whiff_recent_predictions.parquet",
+                        "outputs/predictions/hard_hit_recent_predictions.parquet",
                     ],
                     "filters": [
                         "Skills-based fantasy decision support, not projected fantasy points or a roster-availability feed.",
@@ -551,14 +588,14 @@ def build_snapshot(database_path: Path, outputs_dir: Path) -> dict:
                             "definition": "Mean calibrated champion-model whiff probability across recorded swings in the selected recent window.",
                             "formula": "AVG(calibrated_whiff_probability)",
                             "componentIds": ["fantasy-radar-table"],
-                            "sourceLineage": [{"files": ["outputs/predictions/whiff_test_predictions.parquet"]}],
+                            "sourceLineage": [{"files": ["outputs/predictions/whiff_recent_predictions.parquet"]}],
                         },
                         {
                             "label": "Expected hard-hit rate allowed",
                             "definition": "Mean hard-hit champion probability across batted-ball events in the selected recent window; lower is better.",
                             "formula": "AVG(hard_hit_probability)",
                             "componentIds": ["fantasy-radar-table"],
-                            "sourceLineage": [{"files": ["outputs/predictions/hard_hit_test_predictions.parquet"]}],
+                            "sourceLineage": [{"files": ["outputs/predictions/hard_hit_recent_predictions.parquet"]}],
                         },
                         {
                             "label": "Underlying skill gap",
@@ -660,10 +697,12 @@ def main() -> None:
     config = load_config(args.config)
     database_path = project_path(config["paths"]["database"])
     outputs_dir = project_path(config["paths"]["outputs_dir"])
-    output_path = project_path("dashboard/src/data.json")
+    output_path = project_path(config["paths"].get("dashboard_snapshot", "dashboard/src/data.json"))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     snapshot = build_snapshot(database_path, outputs_dir)
-    output_path.write_text(json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    temporary = output_path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    temporary.replace(output_path)
     print(
         "Dashboard snapshot: "
         f"{len(snapshot['queries'][SUMMARY_QUERY_ID]['rows']):,} summary rows, "
@@ -678,4 +717,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from src.artifact_lineage import run_versioned
+    run_versioned("build_dashboard_snapshot", main)

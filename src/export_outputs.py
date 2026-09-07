@@ -79,7 +79,7 @@ def main() -> None:
                 SUM(swing_flag)::DOUBLE / COUNT(*) AS swing_rate,
                 SUM(whiff_flag)::DOUBLE / NULLIF(SUM(swing_flag), 0) AS whiff_rate,
                 SUM(chase_flag)::DOUBLE / NULLIF(SUM(CASE WHEN in_zone_flag = 0 THEN 1 ELSE 0 END), 0) AS chase_rate,
-                SUM(hard_hit_flag)::DOUBLE / NULLIF(SUM(batted_ball_flag), 0) AS hard_hit_rate
+                SUM(hard_hit_flag)::DOUBLE / NULLIF(COUNT(*) FILTER (WHERE batted_ball_flag = 1 AND hard_hit_flag IS NOT NULL), 0) AS hard_hit_rate
             FROM silver.fact_pitch
             GROUP BY pitch_type, pitch_name
             HAVING COUNT(*) >= 10

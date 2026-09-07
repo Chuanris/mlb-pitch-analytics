@@ -31,5 +31,11 @@
     "tableau_dir": "data/tableau",
     "outputs_dir": "outputs",
     "log_file": "logs/pipeline.log"
+  },
+  "model_evaluation": {
+    "train_end": "2025-09-28",
+    "validation_start": "2026-03-25",
+    "test_start": "2026-06-13",
+    "test_end": "2026-09-03"
   }
 }

@@ -6,6 +6,8 @@ const zhTW = {
   "Fantasy": "Fantasy",
   "Models": "模型",
   "Pitch Lab": "投球實驗室",
+  "Compare": "投手比較",
+  "Compare pitchers and next-start strikeout forecasts": "並排比較投手與下一場三振預測",
   "Streams, player pool, and recent form": "串流、球員池與近期表現",
   "Holdout lift, calibration, and scoring": "留出集提升、校準與評分",
   "Usage, pitch shape, counts, and location": "球種使用、球路、球數與位置",

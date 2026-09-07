@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "dashboard/**"
+      - "scripts/check_compare.mjs"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
@@ -38,6 +39,24 @@ jobs:
       - name: Build dashboard
         working-directory: dashboard
         run: npm run build
+
+      - name: Test MLB analysis helpers
+        run: node --test dashboard/tests/mlb-pitch-analysis.test.mjs
+
+      - name: Check Compare in desktop and mobile Chrome
+        timeout-minutes: 5
+        run: node scripts/check_compare.mjs pages-smoke
+
+      - name: Save browser check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compare-browser-check
+          path: |
+            outputs/performance/pages-smoke.json
+            outputs/performance/pages-smoke-*.png
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
