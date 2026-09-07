@@ -8,8 +8,8 @@
 .mlb-hitters .hitters-days label { display:flex; align-items:center; gap:8px; min-height:44px; font-size:16px; }
 .mlb-hitters input[type="checkbox"] { width:18px; height:18px; accent-color:var(--text); }
 .mlb-hitters .hitters-controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
-.mlb-hitters label { display:grid; gap:8px; font-size:14px; min-width:0; }
-.mlb-hitters select,.mlb-hitters input:not([type="checkbox"]) { min-width:0; width:100%; box-sizing:border-box; padding:10px 12px; min-height:44px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:0; font:inherit; font-size:16px; }
+.mlb-hitters label:not(.search-field) { display:grid; gap:8px; font-size:14px; min-width:0; }
+.mlb-hitters select,.mlb-hitters input:not([type="checkbox"]):not(.search) { min-width:0; width:100%; box-sizing:border-box; padding:10px 12px; min-height:44px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:0; font:inherit; font-size:16px; }
 .mlb-hitters :is(select,input,button,summary):focus-visible { outline:2px solid var(--text); outline-offset:3px; }
 .mlb-hitters textarea { width:100%; box-sizing:border-box; padding:12px; font:inherit; font-size:16px; line-height:1.5; color:var(--text); background:var(--surface); border:1px solid var(--border); resize:vertical; }
 .mlb-hitters #hitter-import-apply { align-self:end; min-height:44px; padding:10px 16px; border:1px solid var(--text); color:var(--surface); background:var(--text); font:inherit; cursor:pointer; }

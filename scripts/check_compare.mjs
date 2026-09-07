@@ -135,10 +135,30 @@ try {
   await delay(400);
   hitters.mobileOverflow = await evaluate('document.documentElement.scrollWidth>innerWidth');
   await writeFile(`${out}/${label}-hitters-mobile.png`, Buffer.from((await send('Page.captureScreenshot', {format:'png'})).data,'base64'));
-  const result = { label, url, htmlBytes:process.env.DASHBOARD_URL ? null : html.length, cpuThrottle:4, readyMs, initialMetrics:Object.fromEntries(initial.metrics.map(m=>[m.name,m.value])), interactions, state, mobile, hitters, errors };
+  const layout = [];
+  for (const width of [1440, 1024, 390]) {
+    await send('Emulation.setDeviceMetricsOverride', {width,height:1000,deviceScaleFactor:1,mobile:width<600});
+    for (const workspace of ['hitters','pitch-lab']) {
+      await evaluate(`document.querySelector('#mlb-workspace-${workspace}').click()`);
+      await delay(250);
+      layout.push(await evaluate(`(() => {
+        const rect=e=>e.getBoundingClientRect();
+        const searches=[...document.querySelectorAll('.mlb-hitters .search-field')].map(e=>{
+          const a=rect(e), b=rect(e.querySelector('input'));
+          return b.top>=a.top && b.bottom<=a.bottom+1 && b.right<=a.right;
+        });
+        const notes=[...document.querySelectorAll('.mlb-metric-strip .data-metric-delta')].map(e=>e.scrollWidth<=e.clientWidth+1);
+        return {width:innerWidth,workspace:'${workspace}',searches,notes,overflow:document.documentElement.scrollWidth>innerWidth};
+      })()`));
+      await evaluate(`(document.querySelector('${workspace==='hitters'?'.mlb-hitters .search-field':'.mlb-metric-strip'}'))?.scrollIntoView({block:'center'})`);
+      await writeFile(`${out}/${label}-${workspace}-${width}.png`,Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
+    }
+  }
+  const result = { layout, label, url, htmlBytes:process.env.DASHBOARD_URL ? null : html.length, cpuThrottle:4, readyMs, initialMetrics:Object.fromEntries(initial.metrics.map(m=>[m.name,m.value])), interactions, state, mobile, hitters, errors };
   await writeFile(`${out}/${label}.json`, JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
   await send('Browser.close').catch(()=>{});
+  assert.ok(layout.every(x=>!x.overflow && x.searches.every(Boolean) && x.notes.every(Boolean)), 'Search inputs and metric notes must fit their containers');
   assert.deepEqual(errors, [], 'Compare must not throw a browser exception');
   assert.equal(state.comparisonSelects, 3, 'Compare must render all three pitcher selectors');
   assert.equal(state.tabs.length, 5, 'Workspace navigation must remain available');

@@ -2201,3 +2201,10 @@
   .mlb-comparison-selectors { grid-template-columns: 1fr; }
   .mlb-comparison { gap: 16px; }
 }
+
+/* Keep authored content clear of page edges and retain complete metric context. */
+.page.mlb-dashboard { box-sizing: border-box; padding-inline: 16px; }
+.mlb-dashboard .mlb-metric-strip .data-section-header { padding-inline: 18px; }
+.mlb-dashboard .mlb-metric-strip .data-metric-primary { align-items: flex-start; flex-direction: column; gap: 10px; }
+.mlb-dashboard .mlb-metric-strip .data-metric-delta { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.mlb-dashboard .mlb-metric-strip .component-title-text { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
