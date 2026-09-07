@@ -97,15 +97,59 @@ try {
   await delay(400);
   const mobile = await evaluate(`({overflow:document.documentElement.scrollWidth>innerWidth,width:innerWidth})`);
   await writeFile(`${out}/${label}-mobile.png`, Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
-  const result = { label, url, htmlBytes:process.env.DASHBOARD_URL ? null : html.length, cpuThrottle:4, readyMs, initialMetrics:Object.fromEntries(initial.metrics.map(m=>[m.name,m.value])), interactions, state, mobile, errors };
+  await send('Emulation.setDeviceMetricsOverride', { width:1440, height:1000, deviceScaleFactor:1, mobile:false });
+  const hitters = await evaluate(`(async()=>{
+    const tick=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    document.querySelector('#mlb-workspace-hitters')?.click(); await tick();
+    if(!document.querySelector('#hitter-priority')) return {rendered:false};
+    const change=(selector,value)=>{const el=document.querySelector(selector);el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}));};
+    const before=document.querySelectorAll('[data-hitter-id]').length;
+    const checks=[...document.querySelectorAll('.hitters-days input')];
+    for(const box of checks)if(box.checked)box.click(); await tick();
+    const emptyDaysClearShortlist=document.querySelectorAll('[data-hitter-id]').length===0;
+    for(const box of document.querySelectorAll('.hitters-days input'))if(!box.checked)box.click(); await tick();
+    change('#hitter-priority','speed');await tick();
+    const speedFirst=document.querySelector('[data-hitter-id]')?.dataset.hitterId||null;
+    const inspected=document.querySelector('#hitter-detail-select').value;
+    change('#hitter-mark-pool','available');await tick();
+    change('#hitter-pool-filter','available');await tick();
+    const personalPoolWorks=[...document.querySelectorAll('[data-hitter-id]')].every(e=>e.dataset.hitterId===inspected);
+    const saved=JSON.parse(localStorage.getItem('mlb-fantasy-hitter-pool-v1')||'{}')[inspected]==='available';
+    const importField=document.querySelector('#hitter-import-names');
+    const importName=document.querySelector('#hitter-detail-select').selectedOptions[0].textContent.split(' · ')[0];
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(importField,importName);
+    importField.dispatchEvent(new Event('input',{bubbles:true}));await tick();
+    const importWorks=!document.querySelector('#hitter-import-apply').disabled;
+    document.querySelector('#hitter-import-apply').click();await tick();
+    change('#hitter-pool-filter','all');change('#hitter-priority','balanced');await tick();
+    const candidate=document.querySelector('#hitter-detail-select').value;
+    const baseline=[...document.querySelector('#hitter-incumbent').options].find(o=>o.value&&o.value!==candidate);
+    if(baseline)change('#hitter-incumbent',baseline.value);await tick();
+    document.querySelector('.mlb-language-switch button:last-child')?.click();await tick();
+    return {rendered:true,before,emptyDaysClearShortlist,speedFirst,personalPoolWorks,saved,importWorks,
+      comparisonSelected:!!baseline, chinese:document.querySelector('#mlb-workspace-hitters').textContent.includes('打者決策'),
+      overflow:document.documentElement.scrollWidth>innerWidth};
+  })()`);
+  await writeFile(`${out}/${label}-hitters-desktop.png`, Buffer.from((await send('Page.captureScreenshot', {format:'png'})).data,'base64'));
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await delay(400);
+  hitters.mobileOverflow = await evaluate('document.documentElement.scrollWidth>innerWidth');
+  await writeFile(`${out}/${label}-hitters-mobile.png`, Buffer.from((await send('Page.captureScreenshot', {format:'png'})).data,'base64'));
+  const result = { label, url, htmlBytes:process.env.DASHBOARD_URL ? null : html.length, cpuThrottle:4, readyMs, initialMetrics:Object.fromEntries(initial.metrics.map(m=>[m.name,m.value])), interactions, state, mobile, hitters, errors };
   await writeFile(`${out}/${label}.json`, JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
   await send('Browser.close').catch(()=>{});
   assert.deepEqual(errors, [], 'Compare must not throw a browser exception');
   assert.equal(state.comparisonSelects, 3, 'Compare must render all three pitcher selectors');
-  assert.equal(state.tabs.length, 4, 'Workspace navigation must remain available');
+  assert.equal(state.tabs.length, 5, 'Workspace navigation must remain available');
   assert.equal(state.overflow, false, 'Desktop page must not overflow horizontally');
   assert.equal(mobile.overflow, false, 'Mobile page must not overflow horizontally');
+  assert.equal(hitters.rendered, true, 'Hitters must render with official evidence');
+  assert.equal(hitters.emptyDaysClearShortlist, true, 'No empty roster days must mean no automatic shortlist');
+  assert.equal(hitters.personalPoolWorks && hitters.saved, true, 'Personal availability labels must filter and persist');
+  assert.equal(hitters.importWorks, true, 'Pasted player names must enable the matched-player import');
+  assert.equal(hitters.comparisonSelected && hitters.chinese, true, 'Replacement comparison and Chinese must work');
+  assert.equal(hitters.overflow || hitters.mobileOverflow, false, 'Hitters must fit desktop and mobile');
 } finally {
   ws?.close(); chrome.kill(); server.close();
 }

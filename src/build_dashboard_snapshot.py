@@ -356,6 +356,41 @@ def starter_forecast_queries(outputs_dir: Path, mode: str) -> dict:
     return queries
 
 
+def hitter_queries(outputs_dir: Path, mode: str) -> dict:
+    directory = outputs_dir / 'hitters'
+    manifest = json.loads((directory / 'manifest.json').read_text(encoding='utf-8')) if mode == 'full' else {}
+    evaluation_manifest_path = directory / 'evaluation_manifest.json'
+    evaluation_manifest = json.loads(evaluation_manifest_path.read_text(encoding='utf-8')) if mode == 'full' and evaluation_manifest_path.exists() else {}
+    definitions = {
+        'fantasy_hitters': ('radar.json', 'Daily 5x5 hitter opportunity and contact evidence',
+                            ['hitters-board', 'hitters-detail', 'hitters-impact', 'hitters-table']),
+        'hitter_schedule': ('schedule.json', 'MLB games still scheduled at snapshot time', ['hitters-schedule', 'hitters-board', 'hitters-impact']),
+        'hitter_validation': ('evaluation.json', 'Chronological conditional-rate diagnostic', ['hitters-validation']),
+        'hitter_metadata': ('manifest.json', 'Separate statistics, roster and schedule cutoffs', ['hitters-method']),
+    }
+    result = {}
+    for key, (filename, label, components) in definitions.items():
+        rows = json.loads((directory / filename).read_text(encoding='utf-8')) if mode == 'full' else []
+        if key == 'hitter_metadata':
+            rows = [{k: v for k, v in manifest.items() if k not in ('sources', 'caveats', 'coverage')}] if manifest else []
+        result[key] = {'rows': rows, 'source': {
+            'label': label, 'tables': ['bronze.raw_statcast'],
+            'files': [f'outputs/hitters/{filename}', 'outputs/hitters/schedule.json', 'outputs/hitters/manifest.json', 'src/build_fantasy_hitters.py'],
+            'urls': [s['url'] for s in (evaluation_manifest if key == 'hitter_validation' else manifest).get('sources', [])] + ['https://baseballsavant.mlb.com/csv-docs'],
+            'filters': manifest.get('caveats', []) + ['5x5 categories; daily lineup changes. No fantasy ownership feed.'],
+            'metricDefinitions': [{'label': label, 'componentIds': components,
+                'definition': 'Official R, HR, RBI, SB, H and AB through the completed Statcast cutoff; tracked quality has its own denominators.',
+                'formula': 'Default pace = season count/PA (H/AB for AVG). Optional pace = (last30 count + 100 * prior)/(last30 PA or AB + 100); prior=(pre-window season count + 200*league rate)/(pre-window season PA or AB+200). Planned PA = selected unstarted games * last14 current-team PA/team game (max 5). The player row schedule_json contains the joined reviewed team schedule. AVG impact = planned H - target AVG * planned AB. Smoothing constants are heuristics, not validated stabilization thresholds.',
+                'sourceLineage': [{'files': [f'outputs/hitters/{filename}']}]}]}}
+        if key == 'hitter_validation':
+            result[key]['source']['files'].append('outputs/hitters/evaluation_manifest.json')
+            result[key]['source']['tables'] = []
+            result[key]['source']['metricDefinitions'][0].update(
+                definition='Three chronological weeks; candidate membership is based only on prior statistics. Results are conditional on observed future playing time.',
+                formula='MAE = mean(abs(prior rate * actual future PA or AB - observed next-week count)). Eligibility uses season PA >=100 and recent30 PA >=30 at each origin; zero-future-PA players are excluded from this conditional diagnostic. No end-to-end lineup or waiver benefit is established.')
+    return result
+
+
 def build_snapshot(database_path: Path, outputs_dir: Path) -> dict:
     connection = duckdb.connect(str(database_path), read_only=True)
     try:
@@ -414,6 +449,7 @@ def build_snapshot(database_path: Path, outputs_dir: Path) -> dict:
         ],
         "queries": {
             **starter_forecast_queries(outputs_dir, mode),
+            **hitter_queries(outputs_dir, mode),
             SUMMARY_QUERY_ID: {
                 "rows": summary_rows,
                 "reportingField": "last_game_date",

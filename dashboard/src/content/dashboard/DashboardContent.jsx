@@ -16,6 +16,7 @@ import {
 
 import { summarizePitches, pitchLabAnalysis, EMPTY_PITCH_LAB } from "./pitch-analysis.js";
 import PitcherComparison from "./PitcherComparison.jsx";
+import HitterWorkspace from "./HitterWorkspace.jsx";
 
 import { mlbTeamLogos } from "../assets/team-logos.js";
 import { localizeChart, localizeColumns, translateDashboard } from "./i18n.js";
@@ -199,11 +200,13 @@ const workspaceStorageKey = "mlb-dashboard-workspace-v1";
 const playerPoolStatuses = ["Available", "My roster", "Watchlist", "Unavailable", "Unclassified"];
 const workspaces = [
   { id: "fantasy", label: "Fantasy", description: "Streams, player pool, and recent form" },
+  { id: "hitters", label: "Hitters", description: "Daily lineup gaps, category needs, and hitter evidence" },
   { id: "compare", label: "Compare", description: "Compare pitchers and next-start strikeout forecasts" },
   { id: "models", label: "Models", description: "Holdout lift, calibration, and scoring" },
   { id: "pitch-lab", label: "Pitch Lab", description: "Usage, pitch shape, counts, and location" },
 ];
 const workspaceSectionIds = {
+  hitters: new Set(),
   compare: new Set(),
   fantasy: new Set([
     "dashboard:fantasy-insights",
@@ -1232,6 +1235,7 @@ export function DashboardContent() {
       </div>
     </section>}
     {activeWorkspace === "compare" && <PitcherComparison language={language} />}
+    {activeWorkspace === "hitters" && <HitterWorkspace language={language} />}
     {activeRows.length > 0 && <SortableRegion id={`dashboard:mlb:${activeWorkspace}`} label={t("MLB pitch analytics blocks")}
       variant="canvas" spacing="standard" authoredRevision={7} columns={12} rows={activeRows}>
       {streamMetrics.filter(({ id }) => show(id)).map(({ id, title, description, value, comparison, sourceRows: metricRows }) =>

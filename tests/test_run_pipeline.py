@@ -34,7 +34,7 @@ class PipelineCliTests(unittest.TestCase):
         result, run, output = self.invoke(["--mode", "full", "--dry-run"])
         self.assertEqual(result, 0)
         run.assert_not_called()
-        self.assertIn("Step 13/13", output)
+        self.assertIn("Step 14/14", output)
         self.assertIn("src.train_whiff_model", output)
 
     def test_daily_preflights_release_and_never_trains(self):

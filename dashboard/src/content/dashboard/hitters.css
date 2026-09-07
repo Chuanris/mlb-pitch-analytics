@@ -1,0 +1,42 @@
+.mlb-hitters { display:grid; gap:24px; min-width:0; color:var(--text); }
+.mlb-hitters .hitters-intro { font-family:Georgia,serif; font-size:clamp(24px,3vw,36px); line-height:1.2; max-width:32ch; margin:0; }
+.mlb-hitters .hitters-note { font-size:14px; line-height:1.65; color:var(--secondary); margin:0 0 12px; max-width:100ch; }
+.mlb-hitters .hitters-alert { border:1px solid var(--text); padding:16px; font-size:16px; line-height:1.5; margin:0; }
+.mlb-hitters .hitters-days { margin:0; min-width:0; border:0; padding:16px 0; border-block:1px solid var(--border); }
+.mlb-hitters .hitters-days legend { font-weight:600; font-size:18px; padding:0 8px 0 0; }
+.mlb-hitters .hitters-days > div { display:flex; flex-wrap:wrap; gap:8px 20px; }
+.mlb-hitters .hitters-days label { display:flex; align-items:center; gap:8px; min-height:44px; font-size:16px; }
+.mlb-hitters input[type="checkbox"] { width:18px; height:18px; accent-color:var(--text); }
+.mlb-hitters .hitters-controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
+.mlb-hitters label { display:grid; gap:8px; font-size:14px; min-width:0; }
+.mlb-hitters select,.mlb-hitters input:not([type="checkbox"]) { min-width:0; width:100%; box-sizing:border-box; padding:10px 12px; min-height:44px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:0; font:inherit; font-size:16px; }
+.mlb-hitters :is(select,input,button,summary):focus-visible { outline:2px solid var(--text); outline-offset:3px; }
+.mlb-hitters textarea { width:100%; box-sizing:border-box; padding:12px; font:inherit; font-size:16px; line-height:1.5; color:var(--text); background:var(--surface); border:1px solid var(--border); resize:vertical; }
+.mlb-hitters #hitter-import-apply { align-self:end; min-height:44px; padding:10px 16px; border:1px solid var(--text); color:var(--surface); background:var(--text); font:inherit; cursor:pointer; }
+.mlb-hitters #hitter-import-apply:disabled { opacity:.45; cursor:default; }
+.mlb-hitters .hitters-settings { border-bottom:1px solid var(--border); padding:0 0 16px; }
+.mlb-hitters .hitters-settings summary { cursor:pointer; font-size:16px; padding:12px 0; }
+.mlb-hitters .hitters-settings[open] > .hitters-controls { margin:12px 0; }
+.mlb-hitters .hitters-shortlist { list-style:none; padding:0; margin:0; }
+.mlb-hitters .hitters-shortlist li { display:grid; grid-template-columns:minmax(220px,1fr) minmax(350px,1.2fr); column-gap:24px; padding:20px 0; border-top:1px solid var(--border); }
+.mlb-hitters .hitters-shortlist li:first-child { border-top:0; padding-top:4px; }
+.mlb-hitters .hitters-player { display:flex; align-items:start; gap:16px; min-width:0; }
+.mlb-hitters .hitters-rank { font-family:Georgia,serif; font-size:32px; line-height:1; }
+.mlb-hitters .hitters-player button { font:inherit; font-size:20px; text-align:left; font-weight:600; border:0; padding:0; background:transparent; color:var(--text); cursor:pointer; text-decoration:underline; text-underline-offset:4px; }
+.mlb-hitters .hitters-player button:hover { text-decoration-thickness:2px; }
+.mlb-hitters .hitters-player p { font-size:14px; margin:8px 0; color:var(--secondary); }
+.mlb-hitters .hitters-shortlist dl { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0; }
+.mlb-hitters .hitters-shortlist dt { font-size:12px; line-height:1.5; color:var(--secondary); }
+.mlb-hitters .hitters-shortlist dd { margin:4px 0 0; font-size:20px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.mlb-hitters .hitters-reason { grid-column:1/-1; font-size:14px; line-height:1.6; color:var(--secondary); margin:8px 0 0; }
+.mlb-hitters .hitters-signals { padding-inline-start:20px; margin:0 0 20px; display:grid; gap:8px; font-size:16px; line-height:1.6; }
+.mlb-hitters .hitters-compare-label { max-width:480px; margin-bottom:16px; }
+@media(max-width:800px) {
+  .mlb-hitters .hitters-shortlist li { grid-template-columns:minmax(0,1fr); gap:12px; }
+  .mlb-hitters .hitters-shortlist dl { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .mlb-hitters .hitters-controls { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:450px) {
+  .mlb-hitters { gap:16px; }
+  .mlb-hitters .hitters-player-picker { grid-template-columns:minmax(0,1fr); }
+}

@@ -7,6 +7,8 @@ const zhTW = {
   "Models": "模型",
   "Pitch Lab": "投球實驗室",
   "Compare": "投手比較",
+  "Hitters": "打者決策",
+  "Daily lineup gaps, category needs, and hitter evidence": "每日先發空缺、類別需求與打者證據",
   "Compare pitchers and next-start strikeout forecasts": "並排比較投手與下一場三振預測",
   "Streams, player pool, and recent form": "串流、球員池與近期表現",
   "Holdout lift, calibration, and scoring": "留出集提升、校準與評分",

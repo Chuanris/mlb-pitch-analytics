@@ -26,6 +26,7 @@ It is **not** a game-winner prediction system, betting model, or guaranteed fant
 - SQL joins, CTEs, window functions, conditional aggregation, and quality gates
 - Leakage-controlled, out-of-time whiff and hard-hit probability models
 - Fantasy Pitching Radar and seven-day Stream Planner
+- Daily 5×5 hitter decisions: open-date planning, category needs, replacement impact and evidence-based alerts
 - Tableau-ready CSV exports and an Excel lesson workbook
 - Reproducible Jupyter tutorials and model audits
 - Self-contained React dashboard with English / Traditional Chinese UI
@@ -62,7 +63,7 @@ npm.cmd ci
 npm.cmd run dev -- --host 127.0.0.1
 ```
 
-Open the localhost URL printed by Vite. Choose **Compare**, then select two or three pitchers; use **繁中** to switch language. The tabs are Fantasy, Compare, Models, and Pitch Lab. The public site is a static snapshot: its visible data cutoff can differ from today's date.
+Open the localhost URL printed by Vite. Choose **Compare** for pitchers, or **Hitters** for daily 5×5 batting decisions; use **繁中** to switch language. The tabs are Fantasy, Hitters, Compare, Models, and Pitch Lab. The public site is a static snapshot: its visible data cutoff can differ from today's date.
 
 To regenerate a small dataset instead, start from the repository root:
 
@@ -128,6 +129,12 @@ The dashboard includes:
 - **Player Pool Manager:** browser-local labels such as Available, My roster, Watchlist, and Unavailable.
 - **Compare:** two or three pitchers side by side, with separate recent observed skill and next-start strikeout baselines.
 
+### Daily 5×5 hitter decisions
+
+For hitters, see the [complete methodology and workflow](docs/FANTASY_HITTERS.md). Select open lineup dates, prioritize R / HR / RBI / SB / AVG, paste available-player names, and compare a candidate with an existing option. AVG impact uses hits and at-bats, so an apparent counting-stat gain cannot silently hide ratio dilution. MLB active status and primary position do not establish a confirmed start or fantasy eligibility. Source evidence older than 24 hours pauses automatic shortlists.
+
+The default counting-stat pace uses season rates and recent current-team PA per team game. A separate optional recency scenario and a chronological conditional-rate diagnostic show the tradeoff; neither is advertised as calibrated projections or proven waiver gains. Hard contact, covered-AB xBA gaps and role changes provide sample-gated research signals.
+
 ### Pregame starter strikeout baseline
 
 The Compare workspace adds a separate pregame target: strikeouts in a pitcher's next start. Three transparent baselines are evaluated: the training-season league mean, a small-sample-adjusted average of the last five starts, and a workload/opponent variant. Early validation selects the model; later validation calibrates an empirical 80% prediction interval. Fixed test dates remain separate. Selection never switches models based on test results.
@@ -185,6 +192,7 @@ From the repository root, run the focused analysis tests and the actual Compare 
 
 ```powershell
 node --test dashboard/tests/mlb-pitch-analysis.test.mjs
+node --test dashboard/tests/mlb-hitter-analysis.test.mjs
 node scripts/check_compare.mjs local-check
 .\.venv\Scripts\python.exe -m src.health_check --max-age-days 2
 ```
@@ -245,6 +253,7 @@ Primary sources:
 - 展示 SQL JOIN、CTE、視窗函數、條件彙總與資料品質閘門
 - 避免資料洩漏的跨時間揮空率與強擊球機率模型
 - Fantasy Pitching Radar 與未來七天 Stream Planner
+- 每日 5×5 打者決策：空缺日規劃、類別需求、替換影響與有證據的提醒
 - Tableau 用 CSV 匯出與 Excel 教學活頁簿
 - 可重現的 Jupyter 教學與模型稽核 Notebook
 - 英文／繁體中文 React 儀表板，並可產生單一 HTML 檔案
@@ -281,7 +290,7 @@ npm.cmd ci
 npm.cmd run dev -- --host 127.0.0.1
 ```
 
-開啟 Vite 印出的 localhost 網址，選擇 **Compare**，再選兩至三位投手；點 **繁中** 切換語言。四個分頁為 Fantasy、Compare、Models、Pitch Lab。公開網站是靜態快照，畫面上的資料截止日可能與今天不同。
+開啟 Vite 印出的 localhost 網址，選擇 **Compare** 比較投手，或 **Hitters** 進入每日 5×5 打者決策；點 **繁中** 切換語言。五個分頁為 Fantasy、Hitters、Compare、Models、Pitch Lab。公開網站是靜態快照，畫面上的資料截止日可能與今天不同。
 
 若要重新產生小型教學資料，請回到專案根目錄執行：
 
@@ -349,6 +358,12 @@ Full 模式會處理設定中的 2025 年例行賽，以及 2026 年截至最近
 
 這些工具不知道即時自由球員狀態，也無法涵蓋每個聯盟的計分規則；用途是協助研究，而不是保證結果。
 
+### 每日 5×5 打者決策
+
+打者功能請見[完整方法與使用流程](docs/FANTASY_HITTERS.md)。勾選先發空缺日、調整 R／HR／RBI／SB／AVG 需求、貼上自由球員姓名，再比較候選與現有人選。AVG 影響以安打與打數計算，不會用累積類別的增益掩蓋比率稀釋。MLB 現役與主要守位不等於已確認先發或 Fantasy 守位資格；名單／賽程來源超過 24 小時會暫停自動候選。
+
+產量估值預設採球季速率與現球隊近期每場 PA，另提供近期平滑情境及跨時間速率誤差檢查，不宣稱已校準預測或已證明補人收益。強擊球、同覆蓋打數 xBA 落差與出賽量變化只在樣本門檻達成時提供研究訊號。
+
 ### 賽前先發三振基準預測
 
 比較頁提供聯盟平均、近期先發平均，以及工作量／對手調整三種透明基準。模型只使用比賽日期之前已完成的資料；驗證期前段選模型、後段校準 80% 預測區間，最後才以固定測試期評估。區間代表歷史校準的不確定性，不能保證未來覆蓋率。
@@ -404,6 +419,7 @@ npm.cmd run build
 
 ```powershell
 node --test dashboard/tests/mlb-pitch-analysis.test.mjs
+node --test dashboard/tests/mlb-hitter-analysis.test.mjs
 node scripts/check_compare.mjs local-check
 .\.venv\Scripts\python.exe -m src.health_check --max-age-days 2
 ```

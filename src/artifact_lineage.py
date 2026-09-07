@@ -22,8 +22,9 @@ DEPENDENCIES = {
     "build_fantasy_pitcher_radar": ["score_pitch_models"],
     "build_matchup_stream_planner": ["build_fantasy_pitcher_radar"],
     "build_start_forecast": ["build_matchup_stream_planner"],
+    "build_fantasy_hitters": [],
     "build_dashboard_snapshot": ["score_pitch_models", "build_fantasy_pitcher_radar",
-                                 "build_matchup_stream_planner", "build_start_forecast"],
+                                 "build_matchup_stream_planner", "build_start_forecast", "build_fantasy_hitters"],
 }
 PATTERNS = {
     "train_whiff_model": ["models/whiff*"],
@@ -32,6 +33,7 @@ PATTERNS = {
     "build_fantasy_pitcher_radar": ["fantasy/pitcher_fantasy_radar.csv", "fantasy/fantasy_radar_manifest.json"],
     "build_matchup_stream_planner": ["fantasy/matchup_stream_planner*"],
     "build_start_forecast": ["forecast/*.csv", "forecast/model_manifest.json"],
+    "build_fantasy_hitters": ["hitters/*.json"],
 }
 
 

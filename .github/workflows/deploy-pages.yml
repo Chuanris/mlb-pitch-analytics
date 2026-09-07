@@ -41,9 +41,9 @@ jobs:
         run: npm run build
 
       - name: Test MLB analysis helpers
-        run: node --test dashboard/tests/mlb-pitch-analysis.test.mjs
+        run: node --test dashboard/tests/mlb-pitch-analysis.test.mjs dashboard/tests/mlb-hitter-analysis.test.mjs
 
-      - name: Check Compare in desktop and mobile Chrome
+      - name: Check Compare and hitter decisions in desktop and mobile Chrome
         timeout-minutes: 5
         run: node scripts/check_compare.mjs pages-smoke
 

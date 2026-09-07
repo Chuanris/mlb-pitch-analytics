@@ -20,11 +20,11 @@ The Windows daily task updates local files and rebuilds local HTML. It does **no
 ### Publish a reviewed change
 
 1. Inspect `git status --short` and `git diff`. Keep local lessons, `.env`, raw data, databases, model files, outputs, logs and browser profiles out of the commit. Commit authored source, tests and the reviewed public snapshot together.
-2. Run Python tests from the root: `.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"`. Run `node --test dashboard/tests/mlb-pitch-analysis.test.mjs` for the MLB aggregation helpers.
+2. Run Python tests from the root: `.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"`. Run `node --test dashboard/tests/mlb-pitch-analysis.test.mjs dashboard/tests/mlb-hitter-analysis.test.mjs` for the MLB aggregation and hitter decision helpers.
 3. In `dashboard/`, run `npm.cmd ci` and `npm.cmd run build`. From the root, run `node scripts/check_compare.mjs prepublish`. Chrome must be installed; `CHROME_PATH` overrides its location.
 4. Commit the reviewed files and push to `main`. Dashboard changes or changes to the browser-check script trigger the Pages workflow; documentation-only changes do not require rebuilding the site. The workflow can also be dispatched manually.
 5. Check the matching commit in GitHub Actions. The workflow verifies the protected runtime, builds the HTML, runs analysis tests and checks Compare in Chrome before uploading the Pages artifact. Its `compare-browser-check` artifact retains JSON and desktop/mobile screenshots for seven days.
-6. Open the deployed URL and click Compare. To rerun the automated check against the live site in PowerShell:
+6. Open the deployed URL and check Compare and Hitters. The browser check also covers open dates, category switches, personal availability and replacement comparisons. To rerun it against the live site in PowerShell:
 
 ```powershell
 $env:DASHBOARD_URL = 'https://chuanris.github.io/mlb-pitch-analytics/'
@@ -65,11 +65,11 @@ Windows 每日排程只更新本機檔案並重建本機 HTML，**不會**自動
 ### 發布已檢查的變更
 
 1. 檢查 `git status --short` 與 `git diff`。個人 lesson、`.env`、原始資料、資料庫、模型、outputs、日誌與瀏覽器設定檔保持在本機；功能原始碼、測試與已檢查的公開快照一併提交。
-2. 在根目錄執行 Python 測試：`.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"`；執行 `node --test dashboard/tests/mlb-pitch-analysis.test.mjs` 驗證 MLB 聚合邏輯。
+2. 在根目錄執行 Python 測試：`.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"`；執行 `node --test dashboard/tests/mlb-pitch-analysis.test.mjs dashboard/tests/mlb-hitter-analysis.test.mjs` 驗證 MLB 聚合與打者決策邏輯。
 3. 在 `dashboard/` 執行 `npm.cmd ci` 與 `npm.cmd run build`，回根目錄執行 `node scripts/check_compare.mjs prepublish`。需安裝 Chrome；可透過 `CHROME_PATH` 指定安裝位置。
 4. 提交檢查過的檔案並推送至 `main`。儀表板或瀏覽器檢查腳本有變更時，Pages workflow 自動啟動；純文件變更不必重建網站，也可手動啟動 workflow。
 5. 在 GitHub Actions 確認對應 commit。流程先驗證受保護執行環境、建置 HTML、測試聚合邏輯並用 Chrome 點擊 Compare，通過後才上傳 Pages 產物。`compare-browser-check` artifact 保存 JSON 與桌面／手機截圖七天。
-6. 開啟正式網址並點 Compare。若要在 PowerShell 自動檢查正式網站：
+6. 開啟正式網址並檢查 Compare 與 Hitters。瀏覽器檢查也包含空缺日、類別切換、個人可用名單與替換比較。若要在 PowerShell 自動檢查正式網站：
 
 ```powershell
 $env:DASHBOARD_URL = 'https://chuanris.github.io/mlb-pitch-analytics/'

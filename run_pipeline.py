@@ -119,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         commands.append([sys.executable, "-m", "src.build_fantasy_pitcher_radar", "--config", config])
         commands.append([sys.executable, "-m", "src.build_matchup_stream_planner", "--config", config])
         commands.append([sys.executable, "-m", "src.build_start_forecast", "--config", config])
+        commands.append([sys.executable, "-m", "src.build_fantasy_hitters", "--config", config])
     commands.append([sys.executable, "-m", "src.export_outputs", "--config", config])
     commands.append([sys.executable, "-m", "src.build_dashboard_snapshot", "--config", config])
     status = {"run_id": str(uuid4()), "workflow": args.workflow, "mode": args.mode,
