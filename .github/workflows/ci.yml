@@ -40,7 +40,22 @@ jobs:
         run: python -m pip install -r requirements.txt
 
       - name: Run Python and data-quality tests
-        run: python -m unittest discover -s tests -p "test_*.py" -v
+        shell: bash
+        run: |
+          set +e
+          output=$(python -m unittest discover -s tests -p "test_*.py" -v 2>&1)
+          status=$?
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            message=$(printf '%s\n' "$output" | grep -Ei 'traceback|error|failed|exception|filenotfound|modulenotfound|importerror|assertionerror|no such file' | tail -n 35 | tr '\n' ' ')
+            if [ -z "$message" ]; then
+              message=$(printf '%s\n' "$output" | tail -n 35 | tr '\n' ' ')
+            fi
+            message=${message//'%'/'%25'}
+            message=${message//$'\r'/'%0D'}
+            echo "::error title=Python test suite failed::$message"
+            exit "$status"
+          fi
 
       - name: Validate the full pipeline plan
         run: python run_pipeline.py --mode full --workflow daily --dry-run
@@ -211,7 +226,10 @@ jobs:
           status=$?
           printf '%s\n' "$output"
           if [ "$status" -ne 0 ]; then
-            message=$(printf '%s\n' "$output" | tail -n 35 | tr '\n' ' ')
+            message=$(printf '%s\n' "$output" | grep -Ei 'traceback|error|failed|exception|filenotfound|modulenotfound|importerror|assertionerror|no such file' | tail -n 35 | tr '\n' ' ')
+            if [ -z "$message" ]; then
+              message=$(printf '%s\n' "$output" | tail -n 35 | tr '\n' ' ')
+            fi
             message=${message//'%'/'%25'}
             message=${message//$'\r'/'%0D'}
             echo "::error title=Airflow DAG test failed::$message"
