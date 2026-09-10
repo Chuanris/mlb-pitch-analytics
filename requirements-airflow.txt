@@ -1,0 +1,2 @@
+# Install with the official Python-version constraint documented in docs/AIRFLOW.md.
+apache-airflow==3.3.1

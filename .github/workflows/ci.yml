@@ -1,0 +1,207 @@
+name: Data platform CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "sql/**"
+      - "oltp/**"
+      - "warehouse/**"
+      - "cloud/**"
+      - "infra/**"
+      - "orchestration/**"
+      - "tests/**"
+      - "run_pipeline.py"
+      - "requirements*.txt"
+      - "compose.yaml"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/cloud-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-and-pipeline-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install pipeline dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run Python and data-quality tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Validate the full pipeline plan
+        run: python run_pipeline.py --mode full --workflow daily --dry-run
+
+  postgres-oltp-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: mlb_operational_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mlb_operational_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres_ci_only@127.0.0.1:5432/mlb_operational_test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-oltp.txt
+
+      - name: Install PostgreSQL integration dependencies
+        run: python -m pip install -r requirements-oltp.txt
+
+      - name: Test migrations, transactions, indexes and concurrency
+        run: python -m unittest tests.integration.test_postgres_oltp -v
+
+  dbt-transformation-contracts:
+    runs-on: ubuntu-latest
+    env:
+      DBT_DUCKDB_PATH: ${{ github.workspace }}/warehouse/ci.duckdb
+      DBT_SCHEMA: dbt_ci
+      DBT_THREADS: "4"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dbt.txt
+
+      - name: Install dbt and DuckDB dependencies
+        run: python -m pip install -r requirements-dbt.txt
+
+      - name: Create deterministic warehouse fixture
+        run: python warehouse/scripts/create_ci_fixture.py "$DBT_DUCKDB_PATH"
+
+      - name: Validate profile and build dbt DAG
+        working-directory: warehouse
+        run: |
+          dbt debug --profiles-dir . --target duckdb
+          dbt build --profiles-dir . --target duckdb
+
+      - name: Prove incremental rerun is idempotent
+        working-directory: warehouse
+        run: dbt build --profiles-dir . --target duckdb
+
+  bigquery-mpp-contract:
+    runs-on: ubuntu-latest
+    env:
+      DBT_TARGET: bigquery
+      DBT_BIGQUERY_PROJECT: portfolio-compile-check
+      DBT_SCHEMA: dbt_ci
+      DBT_THREADS: "8"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dbt-bigquery.txt
+
+      - name: Install BigQuery adapter
+        run: python -m pip install -r requirements-dbt-bigquery.txt
+
+      - name: Parse BigQuery target without credentials
+        working-directory: warehouse
+        run: dbt parse --profiles-dir . --target bigquery --no-partial-parse
+
+      - name: Verify partition, clustering and incremental contract
+        run: python warehouse/scripts/assert_bigquery_manifest.py warehouse/target/manifest.json
+
+      - name: Create checksummed cloud landing fixture
+        run: python cloud/scripts/create_landing_fixture.py cloud/.artifacts/landing
+
+      - name: Check cloud verification script syntax
+        run: python -m py_compile cloud/scripts/create_landing_fixture.py cloud/scripts/verify_bigquery.py
+
+  terraform-cloud-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.16.2"
+
+      - name: Enforce Terraform formatting
+        run: terraform fmt -check -recursive infra/terraform
+
+      - name: Validate bootstrap module
+        working-directory: infra/terraform/bootstrap
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Validate platform module without cloud credentials
+        working-directory: infra/terraform/platform
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+  airflow-orchestration-contract:
+    runs-on: ubuntu-latest
+    env:
+      AIRFLOW_HOME: ${{ runner.temp }}/airflow
+      MLB_PROJECT_ROOT: ${{ github.workspace }}
+      MLB_PIPELINE_PYTHON: python
+      MLB_AIRFLOW_EXECUTION_MODE: plan
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up supported Airflow Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-airflow.txt
+
+      - name: Install Airflow with official constraints
+        run: >-
+          python -m pip install "apache-airflow==3.3.1"
+          --constraint
+          "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt"
+
+      - name: Assert DAG topology, concurrency and timeouts
+        run: python orchestration/scripts/assert_dag_contract.py
+
+      - name: Initialize isolated test metadata
+        run: airflow db migrate
+
+      - name: Execute the complete DAG in plan-only test mode
+        run: python orchestration/dags/mlb_daily_pipeline.py

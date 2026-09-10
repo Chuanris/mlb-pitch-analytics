@@ -12,6 +12,22 @@ import run_pipeline
 
 
 class PipelineCliTests(unittest.TestCase):
+    def test_airflow_can_reuse_canonical_daily_command_plan(self):
+        commands = run_pipeline.build_pipeline_commands(
+            mode="full",
+            workflow="daily",
+            config="C:/project/config/pipeline_config.json",
+            python_executable="python",
+        )
+        modules = [command[2] for command in commands]
+        self.assertEqual(len(modules), 12)
+        self.assertEqual(modules[:3], [
+            "src.model_release", "src.extract_statcast", "src.extract_game_context",
+        ])
+        self.assertEqual(modules[-2:], ["src.export_outputs", "src.build_dashboard_snapshot"])
+        scoring = next(command for command in commands if command[2] == "src.score_pitch_models")
+        self.assertIn("--recent-only", scoring)
+
     def test_failed_and_interrupted_runs_record_finish_time(self):
         for error, expected in [(subprocess.CalledProcessError(1, 'step'), 'failed'),
                                 (OSError('cannot launch'), 'failed'), (KeyboardInterrupt(), 'interrupted')]:

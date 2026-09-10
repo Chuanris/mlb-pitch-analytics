@@ -29,6 +29,77 @@ def run_step(arguments: list[str]) -> None:
     subprocess.run(arguments, cwd=PROJECT_ROOT, check=True)
 
 
+def build_pipeline_commands(
+    *,
+    mode: str,
+    workflow: str,
+    config: str,
+    skip_extract: bool = False,
+    force_extract: bool = False,
+    refresh_days: int | None = None,
+    python_executable: str | None = None,
+) -> list[list[str]]:
+    """Return the canonical command plan shared by the CLI and Airflow."""
+    python = python_executable or sys.executable
+    commands: list[list[str]] = []
+    if workflow == "daily":
+        commands.append([python, "-m", "src.model_release", "--config", config, "--action", "verify"])
+    if not skip_extract:
+        extract_command = [
+            python,
+            "-m",
+            "src.extract_statcast",
+            "--config",
+            config,
+            "--mode",
+            mode,
+        ]
+        if force_extract:
+            extract_command.append("--force")
+        if refresh_days is not None:
+            extract_command.extend(["--refresh-days", str(refresh_days)])
+        commands.append(extract_command)
+
+        context_command = [
+            python,
+            "-m",
+            "src.extract_game_context",
+            "--config",
+            config,
+            "--mode",
+            mode,
+        ]
+        if force_extract:
+            context_command.append("--force")
+        if refresh_days is not None:
+            context_command.extend(["--refresh-days", str(refresh_days)])
+        commands.append(context_command)
+
+    commands.append(
+        [python, "-m", "src.build_database", "--config", config, "--mode", mode]
+    )
+    commands.append([python, "-m", "src.validate_data", "--config", config])
+    if mode == "full":
+        if workflow == "retrain":
+            commands.append([python, "-m", "src.train_whiff_model", "--config", config])
+            commands.append([python, "-m", "src.train_hard_hit_model", "--config", config])
+        scoring = [python, "-m", "src.score_pitch_models", "--config", config]
+        if workflow == "daily":
+            scoring.append("--recent-only")
+        commands.append(scoring)
+        if workflow == "retrain":
+            commands.append(
+                [python, "-m", "src.model_release", "--config", config, "--action", "publish"]
+            )
+        commands.append([python, "-m", "src.build_fantasy_pitcher_radar", "--config", config])
+        commands.append([python, "-m", "src.build_matchup_stream_planner", "--config", config])
+        commands.append([python, "-m", "src.build_start_forecast", "--config", config])
+        commands.append([python, "-m", "src.build_fantasy_hitters", "--config", config])
+    commands.append([python, "-m", "src.export_outputs", "--config", config])
+    commands.append([python, "-m", "src.build_dashboard_snapshot", "--config", config])
+    return commands
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the MLB Statcast ELT pipeline end to end.")
     parser.add_argument("--mode", choices=["sample", "full"], default="sample")
@@ -59,69 +130,14 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"Cannot read configuration {config_path}: {error}")
 
     config = str(config_path.resolve())
-    commands: list[list[str]] = []
-    if args.workflow == "daily":
-        # Fail before downloads or database writes when no usable model exists.
-        commands.append([sys.executable, "-m", "src.model_release", "--config", config, "--action", "verify"])
-    if not args.skip_extract:
-        extract_command = [
-            sys.executable,
-            "-m",
-            "src.extract_statcast",
-            "--config",
-            config,
-            "--mode",
-            args.mode,
-        ]
-        if args.force_extract:
-            extract_command.append("--force")
-        if args.refresh_days is not None:
-            extract_command.extend(["--refresh-days", str(args.refresh_days)])
-        commands.append(extract_command)
-
-        context_command = [
-            sys.executable,
-            "-m",
-            "src.extract_game_context",
-            "--config",
-            config,
-            "--mode",
-            args.mode,
-        ]
-        if args.force_extract:
-            context_command.append("--force")
-        if args.refresh_days is not None:
-            context_command.extend(["--refresh-days", str(args.refresh_days)])
-        commands.append(context_command)
-
-    commands.append(
-        [
-            sys.executable,
-            "-m",
-            "src.build_database",
-            "--config",
-            config,
-            "--mode",
-            args.mode,
-        ]
+    commands = build_pipeline_commands(
+        mode=args.mode,
+        workflow=args.workflow,
+        config=config,
+        skip_extract=args.skip_extract,
+        force_extract=args.force_extract,
+        refresh_days=args.refresh_days,
     )
-    commands.append([sys.executable, "-m", "src.validate_data", "--config", config])
-    if args.mode == "full":
-        if args.workflow == "retrain":
-            commands.append([sys.executable, "-m", "src.train_whiff_model", "--config", config])
-            commands.append([sys.executable, "-m", "src.train_hard_hit_model", "--config", config])
-        scoring = [sys.executable, "-m", "src.score_pitch_models", "--config", config]
-        if args.workflow == "daily":
-            scoring.append("--recent-only")
-        commands.append(scoring)
-        if args.workflow == "retrain":
-            commands.append([sys.executable, "-m", "src.model_release", "--config", config, "--action", "publish"])
-        commands.append([sys.executable, "-m", "src.build_fantasy_pitcher_radar", "--config", config])
-        commands.append([sys.executable, "-m", "src.build_matchup_stream_planner", "--config", config])
-        commands.append([sys.executable, "-m", "src.build_start_forecast", "--config", config])
-        commands.append([sys.executable, "-m", "src.build_fantasy_hitters", "--config", config])
-    commands.append([sys.executable, "-m", "src.export_outputs", "--config", config])
-    commands.append([sys.executable, "-m", "src.build_dashboard_snapshot", "--config", config])
     status = {"run_id": str(uuid4()), "workflow": args.workflow, "mode": args.mode,
               "started_at_utc": datetime.now(timezone.utc).isoformat(), "status": "running", "steps": []}
     for index, command in enumerate(commands, start=1):
