@@ -192,6 +192,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AIRFLOW_HOME: ${{ github.workspace }}/.airflow
+      AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/orchestration/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       MLB_PROJECT_ROOT: ${{ github.workspace }}
       MLB_PIPELINE_PYTHON: python
       MLB_AIRFLOW_EXECUTION_MODE: plan
@@ -217,6 +219,9 @@ jobs:
 
       - name: Initialize isolated test metadata
         run: airflow db migrate
+
+      - name: Serialize the repository DAG bundle
+        run: airflow dags reserialize
 
       - name: Execute the complete DAG in plan-only test mode
         shell: bash
