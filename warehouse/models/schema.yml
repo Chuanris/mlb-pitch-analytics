@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: stg_statcast
+    description: One latest-loaded regular-season Statcast record per natural pitch key within approved pipeline ranges.
+    columns:
+      - name: pitch_id
+        description: Stable pitch key built from game, plate appearance and pitch sequence.
+        data_tests: [not_null, unique]
+      - name: game_date
+        data_tests: [not_null]
+      - name: pitcher_id
+        data_tests: [not_null]
+
+  - name: int_pitch_outcomes
+    description: Incremental pitch-grain model with standardized pitch families and denominator-safe outcome flags.
+    columns:
+      - name: pitch_id
+        data_tests: [not_null, unique]
+      - name: pitch_family
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [Fastball, Breaking, Offspeed, Other]
+      - name: swing_flag
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+      - name: whiff_flag
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+
+  - name: mart_pitcher_pitch_type
+    description: Pitcher, batter-side and pitch-type performance mart with explicit rate denominators.
+    columns:
+      - name: pitcher_id
+        data_tests: [not_null]
+      - name: pitch_count
+        data_tests: [not_null]
+
+  - name: mart_count_strategy
+    description: Count-state pitch mix and outcome mart for pitcher strategy analysis.
+    columns:
+      - name: pitcher_id
+        data_tests: [not_null]
+      - name: count_state
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [First Pitch, Two Strikes, Pitcher Ahead, Hitter Ahead, Even]
+      - name: pitch_count
+        data_tests: [not_null]

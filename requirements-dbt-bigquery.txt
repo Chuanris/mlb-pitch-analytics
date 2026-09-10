@@ -1,0 +1,2 @@
+-r requirements-dbt.txt
+dbt-bigquery==1.12.0

@@ -1,0 +1,23 @@
+mlb_pitch_analytics:
+  target: "{{ env_var('DBT_TARGET', 'duckdb') }}"
+  outputs:
+    duckdb:
+      type: duckdb
+      path: "{{ env_var('DBT_DUCKDB_PATH', '../database/mlb_pitch_analytics.duckdb') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'dbt_mlb') }}"
+      threads: "{{ env_var('DBT_THREADS', '4') | int }}"
+      retries:
+        connect_attempts: 3
+        query_attempts: 2
+        retryable_exceptions: ["IOException"]
+
+    bigquery:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('DBT_BIGQUERY_PROJECT', 'replace-with-gcp-project') }}"
+      dataset: "{{ env_var('DBT_SCHEMA', 'dbt_mlb') }}"
+      location: "{{ env_var('DBT_BIGQUERY_LOCATION', 'US') }}"
+      priority: interactive
+      threads: "{{ env_var('DBT_THREADS', '8') | int }}"
+      job_execution_timeout_seconds: 600
+      job_retries: 1

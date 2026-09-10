@@ -1,0 +1,15 @@
+pitch_type,pitch_name_standard,pitch_family
+FF,4-Seam Fastball,Fastball
+SI,Sinker,Fastball
+FC,Cutter,Fastball
+SL,Slider,Breaking
+ST,Sweeper,Breaking
+CU,Curveball,Breaking
+KC,Knuckle Curve,Breaking
+SV,Slurve,Breaking
+CH,Changeup,Offspeed
+FS,Split-Finger,Offspeed
+FO,Forkball,Offspeed
+KN,Knuckleball,Other
+EP,Eephus,Other
+PO,Pitchout,Other

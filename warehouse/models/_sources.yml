@@ -1,0 +1,26 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: Raw Statcast records loaded by the Python extraction pipeline.
+    database: "{{ env_var('DBT_SOURCE_DATABASE', target.database) }}"
+    schema: "{{ env_var('DBT_BRONZE_SCHEMA', 'bronze') }}"
+    tables:
+      - name: raw_statcast
+        description: Append-oriented Statcast landing table; duplicate pitch keys can occur across refreshes.
+
+  - name: metadata
+    description: Pipeline scope and lineage metadata.
+    database: "{{ env_var('DBT_SOURCE_DATABASE', target.database) }}"
+    schema: "{{ env_var('DBT_METADATA_SCHEMA', 'metadata') }}"
+    tables:
+      - name: pipeline_ranges
+        description: Approved season and date ranges for the current build.
+
+  - name: legacy_gold
+    description: Existing DuckDB gold outputs used only for local migration reconciliation.
+    database: "{{ env_var('DBT_SOURCE_DATABASE', target.database) }}"
+    schema: "{{ env_var('DBT_LEGACY_GOLD_SCHEMA', 'gold') }}"
+    tables:
+      - name: pitcher_pitch_type_summary
+      - name: count_strategy_summary
