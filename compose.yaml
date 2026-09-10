@@ -1,0 +1,25 @@
+name: mlb-pitch-analytics
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mlb_operational
+      POSTGRES_USER: mlb_app
+      POSTGRES_PASSWORD: ${MLB_POSTGRES_PASSWORD:-mlb_local_development_only}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - mlb_postgres_data:/var/lib/postgresql/data
+      - ./oltp/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlb_app -d mlb_operational"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  mlb_postgres_data:
+
