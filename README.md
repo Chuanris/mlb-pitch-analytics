@@ -2,11 +2,11 @@
 
 [English](#english) · [繁體中文](#繁體中文)
 
-**[Live dashboard / 線上儀表板](https://chuanris.github.io/mlb-pitch-analytics/)** · [Deployment / 部署狀態](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/deploy-pages.yml) · [Operations / 維護指南](docs/OPERATIONS.md)
+**[Live dashboard / 線上儀表板](https://chuanris.github.io/mlb-pitch-analytics/)** · [Portfolio evidence / 履歷證據](docs/PORTFOLIO.md) · [Cloud platform / 雲端平台](docs/CLOUD.md) · [Airflow orchestration / 工作流程編排](docs/AIRFLOW.md) · [Deployment / 部署狀態](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/deploy-pages.yml) · [Operations / 維護指南](docs/OPERATIONS.md)
 
-> A reproducible MLB Statcast analytics portfolio: Python + DuckDB + SQL + scikit-learn + React.
+> A reproducible MLB Statcast analytics portfolio: Python + PostgreSQL + DuckDB/dbt + deployable GCS/BigQuery infrastructure + scikit-learn + React.
 >
-> 可重現的 MLB Statcast 分析作品集：Python + DuckDB + SQL + scikit-learn + React。
+> 可重現的 MLB Statcast 分析作品集：Python + PostgreSQL + DuckDB／dbt + 可部署的 GCS／BigQuery 基礎設施 + scikit-learn + React。
 
 ---
 
@@ -23,6 +23,10 @@ It is **not** a game-winner prediction system, betting model, or guaranteed fant
 - Restartable Statcast extraction through `pybaseball`
 - MLB schedule, venue, roof, and recorded-weather context
 - Date-partitioned Parquet files and DuckDB bronze/silver/gold layers
+- Optional PostgreSQL OLTP store with constraints, idempotent writes, transactions, and operational indexes
+- Dual-target dbt DAG with an incremental pitch model, 20 data tests, DuckDB reconciliation and BigQuery partition/clustering configuration
+- Terraform-managed private GCS landing, BigQuery datasets, repository-scoped GitHub OIDC, split deploy/runtime identities, and guarded cloud evidence workflow
+- Airflow 3 daily orchestration with two bounded parallel stages, retries, task/DAG timeouts, overlap protection, PostgreSQL metadata and plan-only CI execution
 - SQL joins, CTEs, window functions, conditional aggregation, and quality gates
 - Leakage-controlled, out-of-time whiff and hard-hit probability models
 - Fantasy Pitching Radar and seven-day Stream Planner
@@ -36,20 +40,30 @@ It is **not** a game-winner prediction system, betting model, or guaranteed fant
 
 ```mermaid
 flowchart TD
+    R["Airflow daily scheduler"] --> A
     A["Baseball Savant Statcast"] --> B["Python date partitions"]
     W["MLB schedule and venue APIs"] --> X["Game-context partitions"]
-    B --> C["Bronze: raw Parquet"]
+    B --> O["PostgreSQL OLTP: runs and request state"]
+    B --> C["Bronze: raw Parquet / private GCS"]
     X --> C
-    C --> D["Silver: pitch fact table"]
+    C --> D["Silver: pitch fact table (DuckDB / BigQuery dbt)"]
     D --> E["Gold: analysis summaries"]
     D --> M["Gold: model features"]
     M --> N["Model training and scoring"]
     E --> F["Excel and Tableau exports"]
     D --> H["Bilingual React dashboard"]
     N --> H
+    N --> O
+    D --> Q["dbt tests and legacy reconciliation"]
 ```
 
 The pitch fact table has one row per pitch, keyed by `game_pk + at_bat_number + pitch_number`.
+
+PostgreSQL is an optional operational companion, not a replacement for DuckDB. It stores mutable run, partition, forecast-request/result and watchlist state while DuckDB remains responsible for analytical scans and model features. See the [bilingual OLTP guide](docs/OLTP.md) for the schema, Docker setup, transaction guarantees and real-PostgreSQL integration tests.
+
+The versioned [dbt transformation project](warehouse/) reproduces the core Bronze-to-Silver-to-Gold path locally and exposes a BigQuery target with merge incrementality, daily partitioning, clustering and configurable threads. [Terraform and a manual GitHub workflow](docs/CLOUD.md) provision private GCS/BigQuery resources and keyless repository-scoped OIDC, then capture machine-readable row, physical-design, bytes and slot evidence. The infrastructure is implemented and contract-tested; a real cloud run still requires an explicitly supplied GCP project and billing account.
+
+The [Airflow 3 DAG](docs/AIRFLOW.md) schedules the existing full daily pipeline at 06:30 Pacific. It reuses the CLI's canonical command plan, separates DuckDB write barriers from safe parallel reads, prevents overlapping runs, and ends with an independent health check. CI imports and executes the complete DAG in plan-only mode so orchestration regressions fail without downloading data.
 
 ### Quick start
 
@@ -84,6 +98,16 @@ npm.cmd run build
 Open `dashboard/dist/index.html` after the build completes. On macOS/Linux, activate the environment with `source .venv/bin/activate`, use `python` in place of `.\.venv\Scripts\python.exe`, and use `npm` in place of `npm.cmd`.
 
 The extractor validates existing Parquet partitions before reusing them. Sample mode reads only its configured dates, so a prior full-season run cannot silently alter the lesson dataset.
+
+To exercise the transformation layer against the current DuckDB database:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dbt.txt
+Set-Location warehouse
+..\.venv\Scripts\dbt.exe build --profiles-dir . --target duckdb
+```
+
+This writes only isolated `dbt_mlb_*` schemas and runs the full model/test DAG. See [docs/DBT.md](docs/DBT.md) for the deterministic fixture, incremental rerun and BigQuery setup.
 
 Sample mode replaces the dashboard snapshot with the small teaching dataset and omits full-mode models and forecasts. Keep the full snapshot when only fixing the UI; do not run the sample pipeline as a prerequisite for viewing the current Compare data.
 
@@ -203,15 +227,20 @@ The browser check opens the built HTML in an isolated profile, clicks Compare, v
 
 ```text
 config/                Pipeline dates, modes, and local paths
+cloud/                 Deterministic GCS landing and BigQuery evidence scripts
 data/                  Generated raw/context/Tableau data (Git-ignored)
 database/              Generated DuckDB database (Git-ignored)
 dashboard/             React source, reviewed snapshot, and build tooling
+infra/                 Terraform bootstrap and GCP data-platform modules
+orchestration/         Airflow 3 DAG, Docker environment, and topology contracts
+oltp/                  PostgreSQL operational-store migrations
 notebooks/             Tutorial and model-evaluation notebooks
 outputs/               Generated models, predictions, reports, and workbook
 scripts/               Dashboard build, sanitization, and Windows automation
 sql/                   Silver, gold, and analysis SQL
 src/                   Extraction, transformation, validation, and export code
 tests/                 Python unit and data-quality tests
+warehouse/             Dual-target dbt models, tests, seed, profiles, and CI fixture
 ```
 
 ### Metric definitions
@@ -250,6 +279,10 @@ Primary sources:
 - 透過 `pybaseball` 取得可中斷續跑的 Statcast 資料
 - 整合 MLB 賽程、球場、屋頂狀態與紀錄天氣
 - 使用日期分區 Parquet 與 DuckDB bronze／silver／gold 資料層
+- 選用 PostgreSQL OLTP 儲存，展示約束、冪等寫入、交易與操作型索引
+- 雙 target dbt DAG：incremental 逐球模型、20 項資料測試、DuckDB reconciliation，以及 BigQuery 分區／clustering 設定
+- Terraform 管理的私有 GCS landing、BigQuery datasets、限定 repository 的 GitHub OIDC、分離的部署／執行身份，以及具 guard 的雲端證據 workflow
+- Airflow 3 daily orchestration：兩個有上限的平行階段、retries、task／DAG timeouts、防止重疊執行、PostgreSQL metadata，以及 plan-only CI execution
 - 展示 SQL JOIN、CTE、視窗函數、條件彙總與資料品質閘門
 - 避免資料洩漏的跨時間揮空率與強擊球機率模型
 - Fantasy Pitching Radar 與未來七天 Stream Planner
@@ -263,20 +296,30 @@ Primary sources:
 
 ```mermaid
 flowchart TD
+    R["Airflow 每日排程"] --> A
     A["Baseball Savant Statcast"] --> B["Python 日期分區"]
     W["MLB 賽程與球場 API"] --> X["比賽情境分區"]
-    B --> C["Bronze：原始 Parquet"]
+    B --> O["PostgreSQL OLTP：執行與請求狀態"]
+    B --> C["Bronze：原始 Parquet／私有 GCS"]
     X --> C
-    C --> D["Silver：逐球事實表"]
+    C --> D["Silver：逐球事實表（DuckDB／BigQuery dbt）"]
     D --> E["Gold：分析摘要"]
     D --> M["Gold：模型特徵"]
     M --> N["模型訓練與評分"]
     E --> F["Excel 與 Tableau 匯出"]
     D --> H["雙語 React 儀表板"]
     N --> H
+    N --> O
+    D --> Q["dbt 測試與舊版結果對帳"]
 ```
 
 逐球事實表每一列代表一球，主鍵為 `game_pk + at_bat_number + pitch_number`。
+
+PostgreSQL 是選用的操作型配套，而非 DuckDB 的替代品。它保存會變動的執行、分區、預測請求／結果與觀察名單狀態；DuckDB 繼續負責分析掃描與模型特徵。Schema、Docker 設定、交易保證與真實 PostgreSQL integration tests 請見[雙語 OLTP 指南](docs/OLTP.md)。
+
+受版本控制的 [dbt 轉換專案](warehouse/) 可在本機重現核心 Bronze-to-Silver-to-Gold 路徑，並提供含 merge incremental、每日分區、clustering 與可調整 threads 的 BigQuery target。[Terraform 與手動 GitHub workflow](docs/CLOUD.md)會建立私有 GCS／BigQuery 資源與限定 repository 的無金鑰 OIDC，並保存 row count、physical design、bytes 與 slot 的 machine-readable 證據。基礎設施已實作並通過 contract tests；真實雲端執行仍需明確提供 GCP project 與 billing account。
+
+[Airflow 3 DAG](docs/AIRFLOW.md) 會在 Pacific 06:30 排程既有 full daily pipeline。它重用 CLI 的 canonical command plan、將 DuckDB write barrier 與安全的平行讀取分開、防止重疊執行，最後執行獨立 health check。CI 會以 plan-only mode 匯入並走完 DAG，因此不下載資料也能阻擋 orchestration regression。
 
 ### 快速開始
 
@@ -311,6 +354,16 @@ npm.cmd run build
 建置完成後開啟 `dashboard/dist/index.html`。macOS/Linux 請以 `source .venv/bin/activate` 啟用環境，以 `python` 取代 `.\.venv\Scripts\python.exe`，並以 `npm` 取代 `npm.cmd`。
 
 擷取程式會先驗證既有 Parquet 分區再重複使用。Sample 模式只讀取設定中的日期，因此先前的完整球季資料不會悄悄改變教學樣本。
+
+若要以目前 DuckDB 驗證轉換層：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dbt.txt
+Set-Location warehouse
+..\.venv\Scripts\dbt.exe build --profiles-dir . --target duckdb
+```
+
+此流程只會寫入隔離的 `dbt_mlb_*` schemas，並執行完整 model／test DAG。Deterministic fixture、incremental rerun 與 BigQuery 設定請見 [docs/DBT.md](docs/DBT.md)。
 
 Sample 模式會將儀表板快照替換為小型教學資料，且不包含完整模式的模型與預測。只修介面時保留完整快照；查看目前 Compare 資料不需要先執行 Sample。
 
@@ -430,15 +483,20 @@ node scripts/check_compare.mjs local-check
 
 ```text
 config/                資料日期、模式與本機路徑設定
+cloud/                 Deterministic GCS landing 與 BigQuery 證據腳本
 data/                  產生的原始／情境／Tableau 資料（Git 排除）
 database/              產生的 DuckDB 資料庫（Git 排除）
 dashboard/             React 原始碼、審查快照與建置工具
+infra/                 Terraform bootstrap 與 GCP data-platform modules
+orchestration/         Airflow 3 DAG、Docker 環境與 topology contracts
+oltp/                  PostgreSQL 操作型資料庫 migrations
 notebooks/             教學與模型評估 Notebook
 outputs/               產生的模型、預測、報告與 Excel 活頁簿
 scripts/               儀表板建置、清理與 Windows 自動化
 sql/                   Silver、Gold 與分析 SQL
 src/                   擷取、轉換、驗證與匯出程式
 tests/                 Python 單元測試與資料品質測試
+warehouse/             雙 target dbt models、tests、seed、profiles 與 CI fixture
 ```
 
 ### 指標定義
