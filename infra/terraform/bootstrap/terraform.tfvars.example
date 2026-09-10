@@ -1,0 +1,6 @@
+project_id           = "your-gcp-project"
+region               = "us-west1"
+state_bucket_name    = "your-unique-mlb-terraform-state"
+github_repository    = "your-github-user/mlb-pitch-analytics"
+github_branch        = "main"
+environment          = "dev"

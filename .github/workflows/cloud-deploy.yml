@@ -1,0 +1,179 @@
+name: GCP BigQuery portfolio deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Plan is read-only; apply provisions resources and runs the fixture pipeline"
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+        default: plan
+      confirmation:
+        description: "Type DEPLOY to permit apply; ignored for plan"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: gcp-portfolio-dev
+  cancel-in-progress: false
+
+jobs:
+  platform:
+    runs-on: ubuntu-latest
+    environment: gcp-dev
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_BIGQUERY_LOCATION: ${{ vars.GCP_BIGQUERY_LOCATION }}
+      GCP_LANDING_BUCKET: ${{ vars.GCP_LANDING_BUCKET }}
+      GCP_TF_STATE_BUCKET: ${{ vars.GCP_TF_STATE_BUCKET }}
+      GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+      GCP_TERRAFORM_SERVICE_ACCOUNT: ${{ vars.GCP_TERRAFORM_SERVICE_ACCOUNT }}
+      GCP_DBT_SERVICE_ACCOUNT: ${{ vars.GCP_DBT_SERVICE_ACCOUNT }}
+      DBT_DATASET_PREFIX: dbt_mlb
+    steps:
+      - name: Validate deployment guard and repository variables
+        env:
+          OPERATION: ${{ inputs.operation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [[ "$OPERATION" == "apply" && "$CONFIRMATION" != "DEPLOY" ]]; then
+            echo "Apply requires the exact confirmation DEPLOY." >&2
+            exit 1
+          fi
+          required=(
+            GCP_PROJECT_ID GCP_REGION GCP_BIGQUERY_LOCATION GCP_LANDING_BUCKET
+            GCP_TF_STATE_BUCKET GCP_WIF_PROVIDER
+            GCP_TERRAFORM_SERVICE_ACCOUNT GCP_DBT_SERVICE_ACCOUNT
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing GitHub environment variable: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Authenticate Terraform through short-lived OIDC
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_TERRAFORM_SERVICE_ACCOUNT }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.16.2"
+          terraform_wrapper: false
+
+      - name: Initialize remote state
+        working-directory: infra/terraform/platform
+        run: terraform init -input=false -backend-config="bucket=$GCP_TF_STATE_BUCKET"
+
+      - name: Plan platform changes
+        working-directory: infra/terraform/platform
+        run: |
+          terraform plan -input=false -out=platform.tfplan \
+            -var="project_id=$GCP_PROJECT_ID" \
+            -var="region=$GCP_REGION" \
+            -var="bigquery_location=$GCP_BIGQUERY_LOCATION" \
+            -var="landing_bucket_name=$GCP_LANDING_BUCKET" \
+            -var="dbt_dataset_prefix=$DBT_DATASET_PREFIX" \
+            -var="dbt_service_account=$GCP_DBT_SERVICE_ACCOUNT"
+
+      - name: Apply reviewed plan
+        if: inputs.operation == 'apply'
+        working-directory: infra/terraform/platform
+        run: terraform apply -input=false -auto-approve platform.tfplan
+
+      - name: Stop after read-only plan
+        if: inputs.operation == 'plan'
+        run: echo "Plan completed; no cloud resources or data were changed."
+
+      - name: Re-authenticate as least-privilege dbt runtime
+        if: inputs.operation == 'apply'
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_DBT_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        if: inputs.operation == 'apply'
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          version: ">= 390.0.0"
+
+      - name: Set up Python
+        if: inputs.operation == 'apply'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dbt-bigquery.txt
+
+      - name: Install BigQuery dbt adapter
+        if: inputs.operation == 'apply'
+        run: python -m pip install -r requirements-dbt-bigquery.txt
+
+      - name: Create immutable landing fixture
+        if: inputs.operation == 'apply'
+        run: python cloud/scripts/create_landing_fixture.py cloud/.artifacts/landing
+
+      - name: Upload Bronze files and replace development source tables
+        if: inputs.operation == 'apply'
+        run: |
+          landing_uri="gs://$GCP_LANDING_BUCKET/runs/$GITHUB_RUN_ID-$GITHUB_SHA"
+          gcloud storage cp --recursive cloud/.artifacts/landing "$landing_uri/"
+          bq --project_id="$GCP_PROJECT_ID" --location="$GCP_BIGQUERY_LOCATION" load \
+            --replace --source_format=CSV --autodetect --skip_leading_rows=1 \
+            bronze.raw_statcast "$landing_uri/landing/raw_statcast.csv"
+          bq --project_id="$GCP_PROJECT_ID" --location="$GCP_BIGQUERY_LOCATION" load \
+            --replace --source_format=CSV --autodetect --skip_leading_rows=1 \
+            metadata.pipeline_ranges "$landing_uri/landing/pipeline_ranges.csv"
+
+      - name: Build and test BigQuery medallion DAG twice
+        if: inputs.operation == 'apply'
+        working-directory: warehouse
+        env:
+          DBT_TARGET: bigquery
+          DBT_BIGQUERY_PROJECT: ${{ env.GCP_PROJECT_ID }}
+          DBT_BIGQUERY_LOCATION: ${{ env.GCP_BIGQUERY_LOCATION }}
+          DBT_SCHEMA: ${{ env.DBT_DATASET_PREFIX }}
+          DBT_THREADS: "8"
+        run: |
+          dbt debug --profiles-dir . --target bigquery
+          dbt build --profiles-dir . --target bigquery
+          dbt build --profiles-dir . --target bigquery
+
+      - name: Capture row, partition, clustering, bytes and slot evidence
+        if: inputs.operation == 'apply'
+        run: |
+          python cloud/scripts/verify_bigquery.py \
+            --project "$GCP_PROJECT_ID" \
+            --dataset-prefix "$DBT_DATASET_PREFIX" \
+            --location "$GCP_BIGQUERY_LOCATION" \
+            --output cloud/.artifacts/evidence/bigquery_verification.json
+
+      - name: Upload non-secret cloud evidence
+        if: inputs.operation == 'apply' && always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: bigquery-evidence-${{ github.run_id }}
+          path: |
+            cloud/.artifacts/landing/manifest.json
+            cloud/.artifacts/evidence/bigquery_verification.json
+            warehouse/target/run_results.json
+            warehouse/target/manifest.json
+          if-no-files-found: warn
+          retention-days: 30
