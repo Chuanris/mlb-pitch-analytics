@@ -8,6 +8,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOT_PATH = PROJECT_ROOT / "dashboard" / "src" / "data.json"
 MODEL_DIR = PROJECT_ROOT / "outputs" / "models"
+MODEL_MANIFESTS_AVAILABLE = all(
+    (MODEL_DIR / f"{target}_model_metrics.json").exists()
+    for target in ("whiff", "hard_hit")
+)
 
 
 class DashboardModelSnapshotTests(unittest.TestCase):
@@ -26,6 +30,10 @@ class DashboardModelSnapshotTests(unittest.TestCase):
         self.assertEqual({row["target_key"] for row in champions}, {"whiff", "hard_hit"})
         self.assertEqual(len(champions), 2)
 
+    @unittest.skipUnless(
+        MODEL_MANIFESTS_AVAILABLE,
+        "Generated model manifests are not available in this checkout",
+    )
     def test_snapshot_champions_reconcile_to_model_manifests(self):
         for target_key in ("whiff", "hard_hit"):
             manifest = json.loads(
@@ -42,6 +50,10 @@ class DashboardModelSnapshotTests(unittest.TestCase):
                 manifest["metrics"][manifest["champion"]]["test"]["log_loss"],
             )
 
+    @unittest.skipUnless(
+        MODEL_MANIFESTS_AVAILABLE,
+        "Generated model manifests are not available in this checkout",
+    )
     def test_whiff_calibration_improves_untouched_test(self):
         manifest = json.loads(
             (MODEL_DIR / "whiff_model_metrics.json").read_text(encoding="utf-8")

@@ -12,19 +12,26 @@ from src.build_fantasy_pitcher_radar import PROFILE_WEIGHTS, WINDOW_MINIMUMS
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RADAR_PATH = PROJECT_ROOT / "outputs" / "fantasy" / "pitcher_fantasy_radar.csv"
 MANIFEST_PATH = PROJECT_ROOT / "outputs" / "fantasy" / "fantasy_radar_manifest.json"
+ARTIFACTS_AVAILABLE = RADAR_PATH.exists() and MANIFEST_PATH.exists()
+requires_artifacts = unittest.skipUnless(
+    ARTIFACTS_AVAILABLE,
+    "Generated fantasy pitcher radar artifacts are not available in this checkout",
+)
 
 
 class FantasyPitcherRadarTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.frame = pd.read_csv(RADAR_PATH)
-        cls.manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        if ARTIFACTS_AVAILABLE:
+            cls.frame = pd.read_csv(RADAR_PATH)
+            cls.manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
 
     def test_profile_weights_sum_to_one(self):
         for profile in PROFILE_WEIGHTS.values():
             total = sum(float(value) for key, value in profile.items() if key != "label")
             self.assertAlmostEqual(total, 1.0)
 
+    @requires_artifacts
     def test_artifact_keys_are_unique_and_complete(self):
         self.assertFalse(self.frame.empty)
         self.assertFalse(
@@ -34,6 +41,7 @@ class FantasyPitcherRadarTests(unittest.TestCase):
         self.assertEqual(set(self.frame["profile_key"]), set(PROFILE_WEIGHTS))
         self.assertEqual(len(self.frame), self.manifest["rows"])
 
+    @requires_artifacts
     def test_scores_and_ranks_are_valid(self):
         self.assertTrue(self.frame["fantasy_signal"].between(0, 100).all())
         for _, group in self.frame.groupby(["window_days", "profile_key"]):
@@ -41,6 +49,7 @@ class FantasyPitcherRadarTests(unittest.TestCase):
             ranked_scores = group.sort_values("rank")["fantasy_signal"].tolist()
             self.assertEqual(ranked_scores, sorted(ranked_scores, reverse=True))
 
+    @requires_artifacts
     def test_insight_fields_are_bounded_and_explainable(self):
         self.assertTrue((self.frame["sample_strength_multiple"] >= 1).all())
         self.assertEqual(
@@ -71,6 +80,7 @@ class FantasyPitcherRadarTests(unittest.TestCase):
             (reconstructed_gap - self.frame["underlying_skill_gap_pp"]).abs().lt(1e-9).all()
         )
 
+    @requires_artifacts
     def test_each_window_respects_workload_minimums(self):
         for window_days, minimums in WINDOW_MINIMUMS.items():
             rows = self.frame[self.frame["window_days"] == window_days]

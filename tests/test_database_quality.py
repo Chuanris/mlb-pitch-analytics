@@ -10,6 +10,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATABASE_PATH = PROJECT_ROOT / "database" / "mlb_pitch_analytics.duckdb"
 
 
+@unittest.skipUnless(
+    DATABASE_PATH.exists(),
+    "Generated DuckDB artifact is not available in this checkout",
+)
 class DatabaseQualityTests(unittest.TestCase):
     def test_unknown_exit_velocity_never_becomes_negative_training_label(self):
         unknown, mislabeled, leaked = self.connection.execute("""

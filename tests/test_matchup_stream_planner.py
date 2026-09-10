@@ -12,13 +12,19 @@ from src.build_matchup_stream_planner import schedule_url, stream_score, stream_
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PLANNER_PATH = PROJECT_ROOT / "outputs" / "fantasy" / "matchup_stream_planner.csv"
 MANIFEST_PATH = PROJECT_ROOT / "outputs" / "fantasy" / "matchup_stream_planner_manifest.json"
+ARTIFACTS_AVAILABLE = PLANNER_PATH.exists() and MANIFEST_PATH.exists()
+requires_artifacts = unittest.skipUnless(
+    ARTIFACTS_AVAILABLE,
+    "Generated matchup planner artifacts are not available in this checkout",
+)
 
 
 class MatchupStreamPlannerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.frame = pd.read_csv(PLANNER_PATH)
-        cls.manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        if ARTIFACTS_AVAILABLE:
+            cls.frame = pd.read_csv(PLANNER_PATH)
+            cls.manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
 
     def test_schedule_url_uses_regular_season_and_probable_pitcher_hydration(self):
         url = schedule_url(pd.Timestamp("2026-09-01").date(), pd.Timestamp("2026-09-07").date())
@@ -39,6 +45,7 @@ class MatchupStreamPlannerTests(unittest.TestCase):
         self.assertEqual(stream_tier(None, "Confirmed probable"), "Insufficient recent sample")
         self.assertEqual(stream_tier(82, "Confirmed probable"), "Priority stream research")
 
+    @requires_artifacts
     def test_artifact_keys_and_profiles_are_complete(self):
         self.assertFalse(self.frame.empty)
         self.assertFalse(
@@ -50,6 +57,7 @@ class MatchupStreamPlannerTests(unittest.TestCase):
         )
         self.assertEqual(len(self.frame), self.manifest["rows"])
 
+    @requires_artifacts
     def test_scored_rows_are_bounded_and_tbd_rows_are_unscored(self):
         scored = self.frame[self.frame["stream_score"].notna()]
         self.assertTrue(scored["stream_score"].between(0, 100).all())
@@ -59,6 +67,7 @@ class MatchupStreamPlannerTests(unittest.TestCase):
         self.assertTrue(self.frame["stream_score_coverage"].between(0, 1).all())
         self.assertTrue(self.frame.loc[self.frame["probable_status"] == "TBD", "stream_score"].isna().all())
 
+    @requires_artifacts
     def test_rate_and_weather_fields_are_valid_when_present(self):
         for field in (
             "opponent_strikeout_rate",
