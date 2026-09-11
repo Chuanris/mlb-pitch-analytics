@@ -15,14 +15,15 @@ Use this page to explain the engineering choices with evidence from the reposito
 | Transformation tools | dbt source-to-staging-to-incremental-to-mart DAG, seed, documentation and 20 data tests | Implemented and verified on DuckDB |
 | Medallion architecture | Bronze raw source, Silver staging/outcomes and Gold analytical marts | Implemented |
 | DevOps | Airflow 3 daily DAG, bounded parallelism, retries/timeouts, PostgreSQL metadata, Git, GitHub Actions, Python/PostgreSQL/dbt tests, Terraform CI and protected cloud plan/apply | Six-job CI matrix verified; live scheduler service pending Docker |
-| Communication | Matched English and Traditional Chinese README, operations, OLTP and dbt guides | Implemented |
-| AI proficiency | AI-assisted workflow can be documented through reviewed PR descriptions, tests and human-verified evidence | Process evidence pending a published PR |
+| Communication | Matched English and Traditional Chinese README, operations, OLTP, dbt, cloud, Airflow, portfolio and AI-workflow guides | Implemented |
+| AI proficiency | [AI workflow](AI_WORKFLOW.md), human-review boundaries, public failure-to-fix case study, PR evidence template and CI-enforced claim contracts | Implemented with traceable evidence; no unmeasured productivity claim |
 
 ## Verified evidence / 已驗證證據
 
 As of the latest local and GitHub Actions verification:
 
 - [Data platform CI run 34540760348](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34540760348) passed all six jobs: Python/pipeline contracts, PostgreSQL integration, two dbt builds, BigQuery parse/MPP contracts, two Terraform module validations and Airflow DAG execution.
+- The [AI-assisted engineering case study](AI_WORKFLOW.md) traces an invalid workflow, environment-specific Python/Airflow failures, focused repair commits and the final six-job green run. The PR template requires human review, rejected-suggestion notes, validation evidence and claim/security checks.
 - `dbt build` completed 25/25 resources: four models, one seed and 20 tests.
 - A second fixture build retained exactly nine pitch rows, proving the incremental rerun did not duplicate the latest partition.
 - Full-data dbt output matched the existing gold tables: 1,355,356 pitch rows, 13,288 pitcher/pitch-type mart rows and 56,191 count-strategy mart rows.
@@ -33,6 +34,7 @@ As of the latest local and GitHub Actions verification:
 最近一次本機與 GitHub Actions 驗證結果：
 
 - [Data platform CI run 34540760348](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34540760348) 的六個 jobs 全部成功：Python／pipeline contracts、PostgreSQL integration、兩次 dbt build、BigQuery parse／MPP contracts、兩個 Terraform modules validation，以及 Airflow DAG execution。
+- [AI 輔助工程 case study](AI_WORKFLOW.md) 追蹤 invalid workflow、Python／Airflow 環境差異 failures、針對性修正 commits 與最終六個 jobs 全綠的 run；PR template 要求人工審核、被拒絕建議、驗證證據，以及 claims／security checks。
 - `dbt build` 完成 25/25：四個 models、一個 seed、20 個 tests。
 - Fixture 第二次執行後仍維持九筆逐球資料，證明 incremental rerun 沒有重複最新分區。
 - 完整資料的 dbt 輸出與既有 gold 表一致：1,355,356 筆逐球、13,288 筆投手／球種 mart、56,191 筆球數策略 mart。
@@ -51,6 +53,7 @@ English:
 - Orchestrated a 15-task Airflow 3 daily pipeline with safe parallel extraction/product branches, serialized DuckDB/dbt write barriers, retry and timeout policies, overlap prevention and final health gates; validated DAG serialization and complete plan-only execution in GitHub Actions.
 - Engineered a PostgreSQL OLTP companion for mutable pipeline and forecast state with relational constraints, transactional writes, idempotency keys and workload-specific indexes; automated service-backed integration tests in GitHub Actions.
 - Documented architecture, metric denominators, security boundaries and operating procedures in English and Traditional Chinese, separating verified local results from pending cloud claims.
+- Applied AI-assisted software engineering to analyze the repository, implement four data-platform capability stages and diagnose Linux CI failures; converted suggestions into human-reviewed commits and a six-job green evidence chain without inventing productivity metrics or live-cloud results.
 
 繁體中文：
 
@@ -61,6 +64,7 @@ English:
 - 使用 Airflow 3 編排 15-task daily pipeline，包含安全平行的 extraction／product branches、序列化 DuckDB／dbt write barriers、retry／timeout policies、防止重疊執行與最終 health gates，並在 GitHub Actions 驗證 DAG serialization 與完整 plan-only execution。
 - 為可變動的 pipeline 與預測狀態建立 PostgreSQL OLTP 配套，涵蓋關聯約束、交易式寫入、冪等鍵與依工作負載設計的索引，並在 GitHub Actions 自動執行 service-backed integration tests。
 - 以英文與繁體中文說明架構、指標分母、安全邊界與維運流程，清楚區分已驗證的本機結果與尚待執行的雲端項目。
+- 使用 AI 輔助工程方法分析 repo、實作四個 data-platform capability stages 並診斷 Linux CI failures；將建議轉成經人工審核的 commits 與六個 jobs 全綠的證據鏈，不捏造 productivity metrics 或 live-cloud results。
 
 ## Interview story / 面試敘事
 

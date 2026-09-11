@@ -4,7 +4,7 @@
 
 [English](#english) · [繁體中文](#繁體中文)
 
-**[Live dashboard / 線上儀表板](https://chuanris.github.io/mlb-pitch-analytics/)** · [Portfolio evidence / 履歷證據](docs/PORTFOLIO.md) · [Cloud platform / 雲端平台](docs/CLOUD.md) · [Airflow orchestration / 工作流程編排](docs/AIRFLOW.md) · [Deployment / 部署狀態](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/deploy-pages.yml) · [Operations / 維護指南](docs/OPERATIONS.md)
+**[Live dashboard / 線上儀表板](https://chuanris.github.io/mlb-pitch-analytics/)** · [Portfolio evidence / 履歷證據](docs/PORTFOLIO.md) · [AI workflow / AI 協作](docs/AI_WORKFLOW.md) · [Cloud platform / 雲端平台](docs/CLOUD.md) · [Airflow orchestration / 工作流程編排](docs/AIRFLOW.md) · [Deployment / 部署狀態](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/deploy-pages.yml) · [Operations / 維護指南](docs/OPERATIONS.md)
 
 > A reproducible MLB Statcast analytics portfolio: Python + PostgreSQL + DuckDB/dbt + deployable GCS/BigQuery infrastructure + scikit-learn + React.
 >
@@ -29,6 +29,7 @@ It is **not** a game-winner prediction system, betting model, or guaranteed fant
 - Dual-target dbt DAG with an incremental pitch model, 20 data tests, DuckDB reconciliation and BigQuery partition/clustering configuration
 - Terraform-managed private GCS landing, BigQuery datasets, repository-scoped GitHub OIDC, split deploy/runtime identities, and guarded cloud evidence workflow
 - Airflow 3 daily orchestration with two bounded parallel stages, retries, task/DAG timeouts, overlap protection, PostgreSQL metadata and plan-only CI execution
+- Evidence-backed AI-assisted engineering workflow with human review boundaries, public failure-to-fix history and CI-enforced portfolio claims
 - SQL joins, CTEs, window functions, conditional aggregation, and quality gates
 - Leakage-controlled, out-of-time whiff and hard-hit probability models
 - Fantasy Pitching Radar and seven-day Stream Planner
@@ -233,6 +234,7 @@ cloud/                 Deterministic GCS landing and BigQuery evidence scripts
 data/                  Generated raw/context/Tableau data (Git-ignored)
 database/              Generated DuckDB database (Git-ignored)
 dashboard/             React source, reviewed snapshot, and build tooling
+docs/                  Bilingual architecture, operations, portfolio, and AI-workflow evidence
 infra/                 Terraform bootstrap and GCP data-platform modules
 orchestration/         Airflow 3 DAG, Docker environment, and topology contracts
 oltp/                  PostgreSQL operational-store migrations
@@ -285,6 +287,7 @@ Primary sources:
 - 雙 target dbt DAG：incremental 逐球模型、20 項資料測試、DuckDB reconciliation，以及 BigQuery 分區／clustering 設定
 - Terraform 管理的私有 GCS landing、BigQuery datasets、限定 repository 的 GitHub OIDC、分離的部署／執行身份，以及具 guard 的雲端證據 workflow
 - Airflow 3 daily orchestration：兩個有上限的平行階段、retries、task／DAG timeouts、防止重疊執行、PostgreSQL metadata，以及 plan-only CI execution
+- 可驗證的 AI 輔助工程流程：包含人工審核邊界、公開 failure-to-fix 歷史，以及由 CI 強制檢查的 portfolio claims
 - 展示 SQL JOIN、CTE、視窗函數、條件彙總與資料品質閘門
 - 避免資料洩漏的跨時間揮空率與強擊球機率模型
 - Fantasy Pitching Radar 與未來七天 Stream Planner
@@ -489,6 +492,7 @@ cloud/                 Deterministic GCS landing 與 BigQuery 證據腳本
 data/                  產生的原始／情境／Tableau 資料（Git 排除）
 database/              產生的 DuckDB 資料庫（Git 排除）
 dashboard/             React 原始碼、審查快照與建置工具
+docs/                  雙語架構、維運、履歷與 AI 協作證據
 infra/                 Terraform bootstrap 與 GCP data-platform modules
 orchestration/         Airflow 3 DAG、Docker 環境與 topology contracts
 oltp/                  PostgreSQL 操作型資料庫 migrations
