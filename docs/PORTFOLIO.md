@@ -1,8 +1,8 @@
 # Portfolio evidence and resume bullets / 作品集證據與履歷重點
 
-Use this page to explain the engineering choices with evidence from the repository. Do not claim a live cloud deployment until the BigQuery and orchestration milestones have actually run in CI or a personal cloud project.
+Use this page to explain the engineering choices with evidence from the repository. Credential-free PostgreSQL, dbt, BigQuery, Terraform and Airflow contracts have run successfully in GitHub Actions; do not claim a live GCP deployment until the guarded cloud workflow completes in a personal cloud project.
 
-這一頁用 repo 內可檢查的證據說明工程選擇。在 BigQuery 與 orchestration milestone 尚未於 CI 或個人雲端專案實際執行前，不要宣稱已完成正式雲端部署。
+這一頁用 repo 內可檢查的證據說明工程選擇。PostgreSQL、dbt、BigQuery、Terraform 與 Airflow 的免憑證 contracts 已在 GitHub Actions 成功執行；在 guarded cloud workflow 尚未於個人雲端專案完成前，不要宣稱已正式部署至 GCP。
 
 ## Job-description coverage / 職缺條件涵蓋度
 
@@ -14,29 +14,31 @@ Use this page to explain the engineering choices with evidence from the reposito
 | Cloud storage and security | Private versioned GCS, enforced public-access prevention, repository/branch-scoped GitHub OIDC, split deploy/runtime identities and dataset/bucket-scoped runtime grants | Implemented as Terraform; live apply pending |
 | Transformation tools | dbt source-to-staging-to-incremental-to-mart DAG, seed, documentation and 20 data tests | Implemented and verified on DuckDB |
 | Medallion architecture | Bronze raw source, Silver staging/outcomes and Gold analytical marts | Implemented |
-| DevOps | Airflow 3 daily DAG, bounded parallelism, retries/timeouts, PostgreSQL metadata, Git, GitHub Actions, Python/PostgreSQL/dbt tests, Terraform CI and protected cloud plan/apply | Implemented and locally contract-tested; live Airflow service run pending Docker |
+| DevOps | Airflow 3 daily DAG, bounded parallelism, retries/timeouts, PostgreSQL metadata, Git, GitHub Actions, Python/PostgreSQL/dbt tests, Terraform CI and protected cloud plan/apply | Six-job CI matrix verified; live scheduler service pending Docker |
 | Communication | Matched English and Traditional Chinese README, operations, OLTP and dbt guides | Implemented |
 | AI proficiency | AI-assisted workflow can be documented through reviewed PR descriptions, tests and human-verified evidence | Process evidence pending a published PR |
 
 ## Verified evidence / 已驗證證據
 
-As of the latest local verification:
+As of the latest local and GitHub Actions verification:
 
+- [Data platform CI run 34540760348](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34540760348) passed all six jobs: Python/pipeline contracts, PostgreSQL integration, two dbt builds, BigQuery parse/MPP contracts, two Terraform module validations and Airflow DAG execution.
 - `dbt build` completed 25/25 resources: four models, one seed and 20 tests.
 - A second fixture build retained exactly nine pitch rows, proving the incremental rerun did not duplicate the latest partition.
 - Full-data dbt output matched the existing gold tables: 1,355,356 pitch rows, 13,288 pitcher/pitch-type mart rows and 56,191 count-strategy mart rows.
 - The BigQuery target parsed with `dbt-bigquery==1.12.0`; its manifest records merge incrementality, daily partitioning and two clustering keys. Authentication and warehouse execution are still pending.
 - Both Terraform modules are included in credential-free CI format/validate contracts. The guarded cloud workflow, OIDC boundary, landing manifest and BigQuery evidence collector are implemented, but no live GCP metrics should be claimed until an `apply` artifact exists.
-- The Airflow DAG defines 15 tasks, two parallel stages, a serial DuckDB/dbt barrier, one active run, four active tasks, retries and execution/DAG timeouts. CI is configured to import and execute it in plan-only mode; a live scheduler run should not be claimed until Docker or a managed Airflow environment completes it.
+- The Airflow DAG defines 15 tasks, two parallel stages, a serial DuckDB/dbt barrier, one active run, four active tasks, retries and execution/DAG timeouts. CI successfully imported, serialized and executed it in plan-only `dag.test()` mode; a live scheduler run should not be claimed until Docker or a managed Airflow environment completes it.
 
-最近一次本機驗證結果：
+最近一次本機與 GitHub Actions 驗證結果：
 
+- [Data platform CI run 34540760348](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34540760348) 的六個 jobs 全部成功：Python／pipeline contracts、PostgreSQL integration、兩次 dbt build、BigQuery parse／MPP contracts、兩個 Terraform modules validation，以及 Airflow DAG execution。
 - `dbt build` 完成 25/25：四個 models、一個 seed、20 個 tests。
 - Fixture 第二次執行後仍維持九筆逐球資料，證明 incremental rerun 沒有重複最新分區。
 - 完整資料的 dbt 輸出與既有 gold 表一致：1,355,356 筆逐球、13,288 筆投手／球種 mart、56,191 筆球數策略 mart。
 - BigQuery target 已以 `dbt-bigquery==1.12.0` 成功 parse；manifest 記錄 merge incremental、每日分區與兩個 clustering keys。雲端認證與 warehouse 實跑仍待完成。
 - 兩個 Terraform modules 都已加入不需憑證的 CI format／validate contracts；具 guard 的 cloud workflow、OIDC 邊界、landing manifest 與 BigQuery evidence collector 已完成，但在 `apply` artifact 出現前不可宣稱真實 GCP metrics。
-- Airflow DAG 定義 15 個 tasks、兩個平行階段、serial DuckDB／dbt barrier、單一 active run、四個 active tasks、retries 與 execution／DAG timeouts。CI 已設定成以 plan-only mode 匯入並執行；在 Docker 或 managed Airflow environment 真實完成前，不可宣稱 live scheduler run。
+- Airflow DAG 定義 15 個 tasks、兩個平行階段、serial DuckDB／dbt barrier、單一 active run、四個 active tasks、retries 與 execution／DAG timeouts。CI 已成功匯入、序列化並以 plan-only `dag.test()` mode 執行；在 Docker 或 managed Airflow environment 真實完成前，不可宣稱 live scheduler run。
 
 ## Resume bullets ready to use / 可直接使用的履歷 bullet points
 
@@ -46,7 +48,7 @@ English:
 - Implemented an idempotent incremental dbt model and 20 schema/business/reconciliation tests; matched 1,355,356 pitch rows and both analytical marts against legacy gold outputs.
 - Engineered a deployable GCS/BigQuery MPP platform with Terraform, merge-based dbt incrementality, daily partitioning, clustering and parallel execution while retaining a zero-cost DuckDB development target.
 - Secured cloud CI/CD with repository- and branch-scoped GitHub OIDC, separate infrastructure/runtime identities, private versioned object storage, least-privilege dataset grants, manual approval and query-cost guards.
-- Orchestrated a 15-task Airflow 3 daily pipeline with safe parallel extraction/product branches, serialized DuckDB/dbt write barriers, retry and timeout policies, overlap prevention, final health gates and CI topology execution.
+- Orchestrated a 15-task Airflow 3 daily pipeline with safe parallel extraction/product branches, serialized DuckDB/dbt write barriers, retry and timeout policies, overlap prevention and final health gates; validated DAG serialization and complete plan-only execution in GitHub Actions.
 - Engineered a PostgreSQL OLTP companion for mutable pipeline and forecast state with relational constraints, transactional writes, idempotency keys and workload-specific indexes; automated service-backed integration tests in GitHub Actions.
 - Documented architecture, metric denominators, security boundaries and operating procedures in English and Traditional Chinese, separating verified local results from pending cloud claims.
 
@@ -56,7 +58,7 @@ English:
 - 實作可冪等重跑的 incremental dbt model 與 20 項 schema、商業規則及 reconciliation tests；1,355,356 筆逐球資料與兩個分析 marts 均對齊既有 gold 輸出。
 - 使用 Terraform 建立可部署的 GCS／BigQuery MPP 平台，結合 dbt merge incremental、每日分區、clustering 與平行執行，同時保留零成本 DuckDB 開發 target。
 - 以限定 repository／branch 的 GitHub OIDC、分離的 infrastructure／runtime identities、私有版本化 object storage、最小權限 dataset grants、人工核准與 query-cost guards 強化雲端 CI/CD。
-- 使用 Airflow 3 編排 15-task daily pipeline，包含安全平行的 extraction／product branches、序列化 DuckDB／dbt write barriers、retry／timeout policies、防止重疊執行、最終 health gates 與 CI topology execution。
+- 使用 Airflow 3 編排 15-task daily pipeline，包含安全平行的 extraction／product branches、序列化 DuckDB／dbt write barriers、retry／timeout policies、防止重疊執行與最終 health gates，並在 GitHub Actions 驗證 DAG serialization 與完整 plan-only execution。
 - 為可變動的 pipeline 與預測狀態建立 PostgreSQL OLTP 配套，涵蓋關聯約束、交易式寫入、冪等鍵與依工作負載設計的索引，並在 GitHub Actions 自動執行 service-backed integration tests。
 - 以英文與繁體中文說明架構、指標分母、安全邊界與維運流程，清楚區分已驗證的本機結果與尚待執行的雲端項目。
 

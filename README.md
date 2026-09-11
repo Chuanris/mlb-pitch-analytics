@@ -1,5 +1,7 @@
 # MLB Pitch Strategy & Plate Discipline Analytics
 
+[![Data platform CI](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/ci.yml)
+
 [English](#english) · [繁體中文](#繁體中文)
 
 **[Live dashboard / 線上儀表板](https://chuanris.github.io/mlb-pitch-analytics/)** · [Portfolio evidence / 履歷證據](docs/PORTFOLIO.md) · [Cloud platform / 雲端平台](docs/CLOUD.md) · [Airflow orchestration / 工作流程編排](docs/AIRFLOW.md) · [Deployment / 部署狀態](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/deploy-pages.yml) · [Operations / 維護指南](docs/OPERATIONS.md)

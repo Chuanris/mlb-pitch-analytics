@@ -83,9 +83,9 @@ Adding `--volumes` deletes the Airflow metadata and logs and should be used only
 
 ## Safe validation / 安全驗證
 
-CI installs Airflow using the official Python 3.12 constraints, imports the real DAG, asserts all 15 tasks and dependency edges, checks concurrency/timeouts, initializes isolated SQLite metadata, and executes `dag.test()` with `MLB_AIRFLOW_EXECUTION_MODE=plan`. Plan mode traverses the complete DAG but does not launch extraction, database, dbt, model or dashboard commands.
+CI installs Airflow using the official Python 3.12 constraints, imports the real DAG, asserts all 15 tasks and dependency edges, checks concurrency/timeouts, initializes isolated SQLite metadata, serializes the DAG bundle, and executes `dag.test()` with `MLB_AIRFLOW_EXECUTION_MODE=plan`. Plan mode traverses the complete DAG but does not launch extraction, database, dbt, model or dashboard commands. This contract passed in [Data platform CI run 34540760348](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34540760348).
 
-CI 依官方 Python 3.12 constraints 安裝 Airflow，匯入真實 DAG、驗證全部 15 個 tasks 與 dependency edges、檢查 concurrency／timeouts、初始化隔離的 SQLite metadata，並以 `MLB_AIRFLOW_EXECUTION_MODE=plan` 執行 `dag.test()`。Plan mode 會走完 DAG，但不會啟動 extraction、database、dbt、model 或 dashboard commands。
+CI 依官方 Python 3.12 constraints 安裝 Airflow，匯入真實 DAG、驗證全部 15 個 tasks 與 dependency edges、檢查 concurrency／timeouts、初始化隔離的 SQLite metadata、序列化 DAG bundle，並以 `MLB_AIRFLOW_EXECUTION_MODE=plan` 執行 `dag.test()`。Plan mode 會走完 DAG，但不會啟動 extraction、database、dbt、model 或 dashboard commands。此 contract 已於 [Data platform CI run 34540760348](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34540760348) 通過。
 
 The repository-level no-write preview remains the fastest first check:
 
