@@ -1,0 +1,5 @@
+{
+  "freshness_grace_days": 2,
+  "minimum_row_ratio": 0.9,
+  "maximum_row_ratio": 1.5
+}

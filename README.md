@@ -22,6 +22,8 @@ It is **not** a game-winner prediction system, betting model, or guaranteed fant
 
 ### Highlights
 
+- Persistent [data observability](docs/OBSERVABILITY.md): freshness gates, schema/volume baselines, SQL-quality history and fault-tested recovery through the existing Airflow quality task
+
 - Restartable Statcast extraction through `pybaseball`
 - MLB schedule, venue, roof, and recorded-weather context
 - Date-partitioned Parquet files and DuckDB bronze/silver/gold layers
@@ -289,6 +291,8 @@ Primary sources:
 本專案**不是**比賽勝負預測、運彩模型，也不保證 Fantasy 決策結果。
 
 ### 專案亮點
+
+- 持久化[資料可觀測性](docs/OBSERVABILITY.md)：freshness 閘門、schema／筆數基準、SQL 品質歷史，以及透過既有 Airflow quality task 驗證的故障恢復
 
 - 透過 `pybaseball` 取得可中斷續跑的 Statcast 資料
 - 整合 MLB 賽程、球場、屋頂狀態與紀錄天氣

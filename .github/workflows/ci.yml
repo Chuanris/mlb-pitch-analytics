@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "config/**"
       - "sql/**"
       - "benchmarks/**"
       - "oltp/**"
@@ -63,6 +64,9 @@ jobs:
 
       - name: Validate SQL benchmark runner and thread-invariance gate
         run: python -m unittest tests.test_duckdb_benchmark -v
+
+      - name: Replay observability failures, retries and recovery
+        run: python -m unittest tests.test_observability -v
 
       - name: Validate the full pipeline plan
         run: python run_pipeline.py --mode full --workflow daily --dry-run

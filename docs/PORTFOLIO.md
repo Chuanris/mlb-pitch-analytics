@@ -20,6 +20,10 @@ Use this page to explain the engineering choices with evidence from the reposito
 
 ## Verified evidence / 已驗證證據
 
+The [observability implementation](OBSERVABILITY.md) persists SQL-quality outcomes and freshness/schema/volume alerts before the existing CLI/Airflow quality gate fails. Synthetic fault tests verify failed retries cannot replace successful baselines and that recovery preserves history. Calendar freshness and total-volume thresholds have documented limits; outbound paging is not configured.
+
+[資料觀測實作](OBSERVABILITY.md)會在既有 CLI／Airflow 品質閘門失敗前，保存 SQL 品質結果及 freshness／schema／筆數提醒。合成故障測試驗證失敗重試不會取代成功基準，並保留恢復歷史。Calendar freshness 與總筆數閾值的限制已記錄；尚未設定外部 paging。
+
 Published CI baseline and current local verification:
 
 - [Data platform CI run 34642844311](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34642844311) passed all six jobs: Python/pipeline contracts, PostgreSQL integration, two dbt builds, BigQuery parse/MPP contracts, two Terraform module validations and Airflow DAG execution.
@@ -48,6 +52,8 @@ Published CI baseline and current local verification:
 
 English:
 
+- Implemented persistent data observability with freshness gates, schema-drift detection, volume thresholds and SQL quality history; integrated failure propagation into Airflow and verified retry-safe baselines and recovery using injected faults.
+
 - Built a tested medallion analytics pipeline for 1.35M+ MLB Statcast pitches using Python, DuckDB, SQL and dbt, producing reusable pitcher and count-strategy marts.
 - Implemented an idempotent incremental dbt model and 20 schema/business/reconciliation tests; matched 1,355,356 pitch rows and both analytical marts against legacy gold outputs.
 - Engineered a deployable GCS/BigQuery MPP platform with Terraform, merge-based dbt incrementality, daily partitioning, clustering and parallel execution while retaining a zero-cost DuckDB development target.
@@ -59,6 +65,8 @@ English:
 - Built a reproducible DuckDB SQL benchmark over 1.36M pitch facts with scans, filters, hash joins and partitioned windows; verified exact results across 1/2/4/8 threads and measured up to 1.95x median speedup while documenting non-linear scaling and cache limits.
 
 繁體中文：
+
+- 實作持久化資料觀測，涵蓋 freshness 閘門、schema drift、筆數閾值與 SQL 品質歷史；串接 Airflow 失敗傳遞，並以故障注入驗證重試基準與恢復行為。
 
 - 使用 Python、DuckDB、SQL 與 dbt 建立具測試的 Medallion 分析管線，處理超過 135 萬筆 MLB Statcast 逐球資料，產出可重用的投手與球數策略 marts。
 - 實作可冪等重跑的 incremental dbt model 與 20 項 schema、商業規則及 reconciliation tests；1,355,356 筆逐球資料與兩個分析 marts 均對齊既有 gold 輸出。

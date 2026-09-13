@@ -7,6 +7,7 @@ from pathlib import Path
 import duckdb
 
 from src.common import load_config, project_path
+from src.observability import observe
 
 
 CHECKS = [
@@ -438,6 +439,7 @@ CHECKS = [
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run deterministic data-quality checks.")
     parser.add_argument("--config", default="config/pipeline_config.json")
+    parser.add_argument("--policy", default="config/observability.json")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -445,19 +447,19 @@ def main() -> None:
     outputs_dir = project_path(config["paths"]["outputs_dir"])
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
+    observation = observe(config, load_config(args.policy), checks=CHECKS)
+    results = observation["quality_checks"]
+    report_path = outputs_dir / "data_quality_report.csv"
+    with report_path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=["check_name", "status", "observed", "expected"])
+        writer.writeheader()
+        writer.writerows(results)
+    print(f"Observation {observation['run_id']}: {observation['status']}")
+    for alert in observation["alerts"]:
+        print(f"ALERT | {alert['check']} | {alert['detail']} | {alert['action']}")
+    if observation["exit_code"]:
+        raise SystemExit(observation["exit_code"])
     connection = duckdb.connect(str(database_path), read_only=True)
-    results = []
-    for check_name, sql, expected in CHECKS:
-        observed = connection.execute(sql).fetchone()[0]
-        passed = bool(observed) == expected
-        results.append(
-            {
-                "check_name": check_name,
-                "status": "PASS" if passed else "FAIL",
-                "observed": str(observed),
-                "expected": str(expected),
-            }
-        )
 
     profile = connection.execute(
         """
@@ -481,12 +483,6 @@ def main() -> None:
     coverage.to_csv(outputs_dir / "measurement_coverage.csv", index=False)
     connection.close()
 
-    report_path = outputs_dir / "data_quality_report.csv"
-    with report_path.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=["check_name", "status", "observed", "expected"])
-        writer.writeheader()
-        writer.writerows(results)
-
     print(
         "Profile | "
         f"pitches={profile[0]:,}, games={profile[1]:,}, pitchers={profile[2]:,}, "
@@ -494,11 +490,6 @@ def main() -> None:
     )
     for result in results:
         print(f"{result['status']:4} | {result['check_name']}")
-
-    failed = [result for result in results if result["status"] == "FAIL"]
-    if failed:
-        raise SystemExit(f"Data-quality gate failed: {len(failed)} check(s).")
-
 
 if __name__ == "__main__":
     main()
