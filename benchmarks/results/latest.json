@@ -1,0 +1,365 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-09-13T02:59:24.342001+00:00",
+  "methodology": {
+    "timer": "time.perf_counter_ns wall-clock time",
+    "materialization": "Each query is fully fetched into Python.",
+    "first_observed": "Recorded separately and not used for speedup claims; it is not a cold-cache guarantee.",
+    "warmups_per_configuration": 1,
+    "measured_repetitions_per_configuration": 5,
+    "summary_statistic": "Median; p95 is linearly interpolated over measured repetitions.",
+    "correctness_gate": "Result row count and SHA-256 must match across all thread counts.",
+    "recent_filter_cutoff_inclusive": "2026-08-11"
+  },
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python_version": "3.14.2",
+    "duckdb_version": "1.5.5",
+    "logical_cpu_count": 16,
+    "thread_counts": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "explain_analyze_threads": 8
+  },
+  "dataset": {
+    "database_file": "mlb_pitch_analytics.duckdb",
+    "database_bytes": 1665675264,
+    "fact_pitch_rows": 1355356,
+    "fact_game_context_rows": 4626,
+    "first_game_date": "2025-03-18",
+    "last_game_date": "2026-09-09",
+    "recent_filter_input_rows": 120746,
+    "recent_filter_selectivity_pct": 8.909
+  },
+  "results": [
+    {
+      "runs_ms": [
+        56.151,
+        54.219,
+        54.35,
+        56.299,
+        57.253
+      ],
+      "min_ms": 54.219,
+      "median_ms": 56.151,
+      "p95_ms": 57.062,
+      "max_ms": 57.253,
+      "query": "full_scan_aggregate",
+      "workload": "scan + grouped aggregate",
+      "threads": 1,
+      "first_observed_ms": 59.067,
+      "result_rows": 5323,
+      "result_sha256": "4ed747bc5dae0e61c3622b72c080ff375103855d76e24cc23df0dd01298fb91a",
+      "speedup_vs_1_thread": 1.0
+    },
+    {
+      "runs_ms": [
+        34.783,
+        34.05,
+        33.499,
+        34.21,
+        34.214
+      ],
+      "min_ms": 33.499,
+      "median_ms": 34.21,
+      "p95_ms": 34.669,
+      "max_ms": 34.783,
+      "query": "full_scan_aggregate",
+      "workload": "scan + grouped aggregate",
+      "threads": 2,
+      "first_observed_ms": 33.919,
+      "result_rows": 5323,
+      "result_sha256": "4ed747bc5dae0e61c3622b72c080ff375103855d76e24cc23df0dd01298fb91a",
+      "speedup_vs_1_thread": 1.641
+    },
+    {
+      "runs_ms": [
+        28.349,
+        30.001,
+        34.379,
+        32.679,
+        35.903
+      ],
+      "min_ms": 28.349,
+      "median_ms": 32.679,
+      "p95_ms": 35.598,
+      "max_ms": 35.903,
+      "query": "full_scan_aggregate",
+      "workload": "scan + grouped aggregate",
+      "threads": 4,
+      "first_observed_ms": 27.745,
+      "result_rows": 5323,
+      "result_sha256": "4ed747bc5dae0e61c3622b72c080ff375103855d76e24cc23df0dd01298fb91a",
+      "speedup_vs_1_thread": 1.718
+    },
+    {
+      "runs_ms": [
+        27.676,
+        31.965,
+        28.016,
+        33.059,
+        29.094
+      ],
+      "min_ms": 27.676,
+      "median_ms": 29.094,
+      "p95_ms": 32.84,
+      "max_ms": 33.059,
+      "query": "full_scan_aggregate",
+      "workload": "scan + grouped aggregate",
+      "threads": 8,
+      "first_observed_ms": 28.093,
+      "result_rows": 5323,
+      "result_sha256": "4ed747bc5dae0e61c3622b72c080ff375103855d76e24cc23df0dd01298fb91a",
+      "speedup_vs_1_thread": 1.93
+    },
+    {
+      "runs_ms": [
+        16.711,
+        16.03,
+        15.855,
+        16.051,
+        16.049
+      ],
+      "min_ms": 15.855,
+      "median_ms": 16.049,
+      "p95_ms": 16.579,
+      "max_ms": 16.711,
+      "query": "recent_filter_aggregate",
+      "workload": "selective date filter + aggregate",
+      "threads": 1,
+      "first_observed_ms": 17.015,
+      "result_rows": 2557,
+      "result_sha256": "44e97e4a8a6b71bc5abedccc70fcad52d7af6b80684afb3288d8f374890873a2",
+      "speedup_vs_1_thread": 1.0
+    },
+    {
+      "runs_ms": [
+        15.515,
+        14.951,
+        15.324,
+        12.467,
+        16.15
+      ],
+      "min_ms": 12.467,
+      "median_ms": 15.324,
+      "p95_ms": 16.023,
+      "max_ms": 16.15,
+      "query": "recent_filter_aggregate",
+      "workload": "selective date filter + aggregate",
+      "threads": 2,
+      "first_observed_ms": 15.607,
+      "result_rows": 2557,
+      "result_sha256": "44e97e4a8a6b71bc5abedccc70fcad52d7af6b80684afb3288d8f374890873a2",
+      "speedup_vs_1_thread": 1.047
+    },
+    {
+      "runs_ms": [
+        19.015,
+        12.592,
+        11.389,
+        12.644,
+        12.308
+      ],
+      "min_ms": 11.389,
+      "median_ms": 12.592,
+      "p95_ms": 17.741,
+      "max_ms": 19.015,
+      "query": "recent_filter_aggregate",
+      "workload": "selective date filter + aggregate",
+      "threads": 4,
+      "first_observed_ms": 12.847,
+      "result_rows": 2557,
+      "result_sha256": "44e97e4a8a6b71bc5abedccc70fcad52d7af6b80684afb3288d8f374890873a2",
+      "speedup_vs_1_thread": 1.275
+    },
+    {
+      "runs_ms": [
+        12.606,
+        13.337,
+        13.426,
+        12.85,
+        12.609
+      ],
+      "min_ms": 12.606,
+      "median_ms": 12.85,
+      "p95_ms": 13.408,
+      "max_ms": 13.426,
+      "query": "recent_filter_aggregate",
+      "workload": "selective date filter + aggregate",
+      "threads": 8,
+      "first_observed_ms": 13.15,
+      "result_rows": 2557,
+      "result_sha256": "44e97e4a8a6b71bc5abedccc70fcad52d7af6b80684afb3288d8f374890873a2",
+      "speedup_vs_1_thread": 1.249
+    },
+    {
+      "runs_ms": [
+        43.206,
+        45.359,
+        40.672,
+        39.946,
+        40.193
+      ],
+      "min_ms": 39.946,
+      "median_ms": 40.672,
+      "p95_ms": 44.928,
+      "max_ms": 45.359,
+      "query": "game_context_join",
+      "workload": "fact-to-dimension hash join + aggregate",
+      "threads": 1,
+      "first_observed_ms": 41.729,
+      "result_rows": 973,
+      "result_sha256": "e65a9e6f0d72ea0154ad4e16c5824c1c2a5b1665ed355dec8502e36e66644815",
+      "speedup_vs_1_thread": 1.0
+    },
+    {
+      "runs_ms": [
+        37.474,
+        37.784,
+        37.066,
+        38.903,
+        37.187
+      ],
+      "min_ms": 37.066,
+      "median_ms": 37.474,
+      "p95_ms": 38.679,
+      "max_ms": 38.903,
+      "query": "game_context_join",
+      "workload": "fact-to-dimension hash join + aggregate",
+      "threads": 2,
+      "first_observed_ms": 36.936,
+      "result_rows": 973,
+      "result_sha256": "e65a9e6f0d72ea0154ad4e16c5824c1c2a5b1665ed355dec8502e36e66644815",
+      "speedup_vs_1_thread": 1.085
+    },
+    {
+      "runs_ms": [
+        27.744,
+        25.59,
+        19.835,
+        23.075,
+        27.247
+      ],
+      "min_ms": 19.835,
+      "median_ms": 25.59,
+      "p95_ms": 27.644,
+      "max_ms": 27.744,
+      "query": "game_context_join",
+      "workload": "fact-to-dimension hash join + aggregate",
+      "threads": 4,
+      "first_observed_ms": 26.995,
+      "result_rows": 973,
+      "result_sha256": "e65a9e6f0d72ea0154ad4e16c5824c1c2a5b1665ed355dec8502e36e66644815",
+      "speedup_vs_1_thread": 1.589
+    },
+    {
+      "runs_ms": [
+        20.818,
+        17.434,
+        20.981,
+        20.048,
+        21.895
+      ],
+      "min_ms": 17.434,
+      "median_ms": 20.818,
+      "p95_ms": 21.712,
+      "max_ms": 21.895,
+      "query": "game_context_join",
+      "workload": "fact-to-dimension hash join + aggregate",
+      "threads": 8,
+      "first_observed_ms": 21.605,
+      "result_rows": 973,
+      "result_sha256": "e65a9e6f0d72ea0154ad4e16c5824c1c2a5b1665ed355dec8502e36e66644815",
+      "speedup_vs_1_thread": 1.954
+    },
+    {
+      "runs_ms": [
+        155.458,
+        149.221,
+        155.185,
+        150.34,
+        156.189
+      ],
+      "min_ms": 149.221,
+      "median_ms": 155.185,
+      "p95_ms": 156.043,
+      "max_ms": 156.189,
+      "query": "partitioned_window",
+      "workload": "grouped input + partitioned window",
+      "threads": 1,
+      "first_observed_ms": 149.304,
+      "result_rows": 39561,
+      "result_sha256": "8057445c2d322cdc0bcfbf231dd51dadeb707806f0d80d2f55fa91de55542ea8",
+      "speedup_vs_1_thread": 1.0
+    },
+    {
+      "runs_ms": [
+        138.0,
+        143.4,
+        142.795,
+        145.739,
+        136.842
+      ],
+      "min_ms": 136.842,
+      "median_ms": 142.795,
+      "p95_ms": 145.271,
+      "max_ms": 145.739,
+      "query": "partitioned_window",
+      "workload": "grouped input + partitioned window",
+      "threads": 2,
+      "first_observed_ms": 149.914,
+      "result_rows": 39561,
+      "result_sha256": "8057445c2d322cdc0bcfbf231dd51dadeb707806f0d80d2f55fa91de55542ea8",
+      "speedup_vs_1_thread": 1.087
+    },
+    {
+      "runs_ms": [
+        134.36,
+        135.632,
+        144.45,
+        141.39,
+        137.632
+      ],
+      "min_ms": 134.36,
+      "median_ms": 137.632,
+      "p95_ms": 143.838,
+      "max_ms": 144.45,
+      "query": "partitioned_window",
+      "workload": "grouped input + partitioned window",
+      "threads": 4,
+      "first_observed_ms": 150.486,
+      "result_rows": 39561,
+      "result_sha256": "8057445c2d322cdc0bcfbf231dd51dadeb707806f0d80d2f55fa91de55542ea8",
+      "speedup_vs_1_thread": 1.128
+    },
+    {
+      "runs_ms": [
+        143.06,
+        132.853,
+        140.788,
+        133.2,
+        131.814
+      ],
+      "min_ms": 131.814,
+      "median_ms": 133.2,
+      "p95_ms": 142.605,
+      "max_ms": 143.06,
+      "query": "partitioned_window",
+      "workload": "grouped input + partitioned window",
+      "threads": 8,
+      "first_observed_ms": 133.53,
+      "result_rows": 39561,
+      "result_sha256": "8057445c2d322cdc0bcfbf231dd51dadeb707806f0d80d2f55fa91de55542ea8",
+      "speedup_vs_1_thread": 1.165
+    }
+  ],
+  "explain_analyze_files": {
+    "full_scan_aggregate": "benchmarks/results/explain/full_scan_aggregate.txt",
+    "recent_filter_aggregate": "benchmarks/results/explain/recent_filter_aggregate.txt",
+    "game_context_join": "benchmarks/results/explain/game_context_join.txt",
+    "partitioned_window": "benchmarks/results/explain/partitioned_window.txt"
+  }
+}

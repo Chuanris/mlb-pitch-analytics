@@ -8,7 +8,7 @@ Use this page to explain the engineering choices with evidence from the reposito
 
 | Capability | Repository evidence | Status |
 | --- | --- | --- |
-| SQL and performance | Window functions, conditional aggregation, incremental dbt model, date partitioning, clustering, configurable parallel threads, and a bytes/slot benchmark | Local SQL verified; live BigQuery metrics pending one cloud run |
+| SQL and performance | Window functions, conditional aggregation, incremental dbt model, date partitioning/clustering, plus a reproducible [DuckDB benchmark](SQL_PERFORMANCE.md) with 1/2/4/8 threads, median/p95, exact-result checksums and query plans | Local 1.35M-row parallelism measured; live BigQuery metrics pending one cloud run |
 | Traditional OLTP | PostgreSQL run/request/watchlist schema, constraints, idempotent writes, transactions, operational indexes and service-backed CI tests | Implemented; local Docker verification depends on Docker availability |
 | MPP platform | BigQuery dbt target, merge strategy, `game_date` partition, `pitcher_id, pitch_type` clustering, IaC datasets and an executable verification query | Deployable and contract-tested; live run pending credentials/billing |
 | Cloud storage and security | Private versioned GCS, enforced public-access prevention, repository/branch-scoped GitHub OIDC, split deploy/runtime identities and dataset/bucket-scoped runtime grants | Implemented as Terraform; live apply pending |
@@ -20,10 +20,11 @@ Use this page to explain the engineering choices with evidence from the reposito
 
 ## Verified evidence / 已驗證證據
 
-As of the latest local and GitHub Actions verification:
+Published CI baseline and current local verification:
 
-- [Data platform CI run 34540760348](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34540760348) passed all six jobs: Python/pipeline contracts, PostgreSQL integration, two dbt builds, BigQuery parse/MPP contracts, two Terraform module validations and Airflow DAG execution.
+- [Data platform CI run 34642844311](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34642844311) passed all six jobs: Python/pipeline contracts, PostgreSQL integration, two dbt builds, BigQuery parse/MPP contracts, two Terraform module validations and Airflow DAG execution.
 - The [AI-assisted engineering case study](AI_WORKFLOW.md) traces an invalid workflow, environment-specific Python/Airflow failures, focused repair commits and the final six-job green run. The PR template requires human review, rejected-suggestion notes, validation evidence and claim/security checks.
+- The [SQL performance study](SQL_PERFORMANCE.md) measured four workloads over 1,355,356 pitch facts. Eight threads produced 1.930x and 1.954x median speedups for full-scan aggregation and the fact/context join; the selective query peaked at four threads and the window workload scaled only 1.165x. All cross-thread result checksums matched.
 - `dbt build` completed 25/25 resources: four models, one seed and 20 tests.
 - A second fixture build retained exactly nine pitch rows, proving the incremental rerun did not duplicate the latest partition.
 - Full-data dbt output matched the existing gold tables: 1,355,356 pitch rows, 13,288 pitcher/pitch-type mart rows and 56,191 count-strategy mart rows.
@@ -31,10 +32,11 @@ As of the latest local and GitHub Actions verification:
 - Both Terraform modules are included in credential-free CI format/validate contracts. The guarded cloud workflow, OIDC boundary, landing manifest and BigQuery evidence collector are implemented, but no live GCP metrics should be claimed until an `apply` artifact exists.
 - The Airflow DAG defines 15 tasks, two parallel stages, a serial DuckDB/dbt barrier, one active run, four active tasks, retries and execution/DAG timeouts. CI successfully imported, serialized and executed it in plan-only `dag.test()` mode; a live scheduler run should not be claimed until Docker or a managed Airflow environment completes it.
 
-最近一次本機與 GitHub Actions 驗證結果：
+已發布的 CI baseline 與目前本機驗證結果：
 
-- [Data platform CI run 34540760348](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34540760348) 的六個 jobs 全部成功：Python／pipeline contracts、PostgreSQL integration、兩次 dbt build、BigQuery parse／MPP contracts、兩個 Terraform modules validation，以及 Airflow DAG execution。
+- [Data platform CI run 34642844311](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34642844311) 的六個 jobs 全部成功：Python／pipeline contracts、PostgreSQL integration、兩次 dbt build、BigQuery parse／MPP contracts、兩個 Terraform modules validation，以及 Airflow DAG execution。
 - [AI 輔助工程 case study](AI_WORKFLOW.md) 追蹤 invalid workflow、Python／Airflow 環境差異 failures、針對性修正 commits 與最終六個 jobs 全綠的 run；PR template 要求人工審核、被拒絕建議、驗證證據，以及 claims／security checks。
+- [SQL 效能研究](SQL_PERFORMANCE.md)對 1,355,356 筆逐球 facts 量測四類 workload。8 threads 讓 full-scan aggregation 與 fact/context join 的 median 分別改善 1.930x 與 1.954x；selective query 在 4 threads 最佳，而 window workload 只改善 1.165x。所有跨 thread 結果 checksums 都一致。
 - `dbt build` 完成 25/25：四個 models、一個 seed、20 個 tests。
 - Fixture 第二次執行後仍維持九筆逐球資料，證明 incremental rerun 沒有重複最新分區。
 - 完整資料的 dbt 輸出與既有 gold 表一致：1,355,356 筆逐球、13,288 筆投手／球種 mart、56,191 筆球數策略 mart。
@@ -54,6 +56,7 @@ English:
 - Engineered a PostgreSQL OLTP companion for mutable pipeline and forecast state with relational constraints, transactional writes, idempotency keys and workload-specific indexes; automated service-backed integration tests in GitHub Actions.
 - Documented architecture, metric denominators, security boundaries and operating procedures in English and Traditional Chinese, separating verified local results from pending cloud claims.
 - Applied AI-assisted software engineering to analyze the repository, implement four data-platform capability stages and diagnose Linux CI failures; converted suggestions into human-reviewed commits and a six-job green evidence chain without inventing productivity metrics or live-cloud results.
+- Built a reproducible DuckDB SQL benchmark over 1.36M pitch facts with scans, filters, hash joins and partitioned windows; verified exact results across 1/2/4/8 threads and measured up to 1.95x median speedup while documenting non-linear scaling and cache limits.
 
 繁體中文：
 
@@ -65,6 +68,7 @@ English:
 - 為可變動的 pipeline 與預測狀態建立 PostgreSQL OLTP 配套，涵蓋關聯約束、交易式寫入、冪等鍵與依工作負載設計的索引，並在 GitHub Actions 自動執行 service-backed integration tests。
 - 以英文與繁體中文說明架構、指標分母、安全邊界與維運流程，清楚區分已驗證的本機結果與尚待執行的雲端項目。
 - 使用 AI 輔助工程方法分析 repo、實作四個 data-platform capability stages 並診斷 Linux CI failures；將建議轉成經人工審核的 commits 與六個 jobs 全綠的證據鏈，不捏造 productivity metrics 或 live-cloud results。
+- 建立可重跑的 DuckDB SQL benchmark，涵蓋 136 萬筆逐球 facts 的 scan、filter、hash join 與 partitioned window；驗證 1／2／4／8 threads 的結果完全一致，量測到最高 1.95x median speedup，並記錄非線性 scaling 與 cache 限制。
 
 ## Interview story / 面試敘事
 
@@ -74,6 +78,7 @@ English:
 4. Show the migration safety net: deterministic edge-case fixture plus full-data reconciliation against existing gold outputs.
 5. Explain the cloud trust boundary and MPP proof: Terraform separates bootstrap/platform state, OIDC replaces stored keys, dbt runs under a narrower identity, and the final artifact measures bytes and slot time. Be explicit that live numbers require a successful cloud run.
 6. Show orchestration judgment rather than only the graph: parallelize disjoint I/O and read-only products, serialize the shared DuckDB writer, cap concurrency, fail before extraction when the frozen model release is invalid, and finish with a health gate.
+7. Open the SQL benchmark evidence: explain why scan/join scaling differed from selective/window workloads, why median and p95 both matter, and how exact checksums caught parallel floating-point reduction differences before the fixed-point repair.
 
 1. 先說明工作負載分離：PostgreSQL 負責會變動的操作狀態；DuckDB／BigQuery 負責分析掃描。
 2. 依序展示 dbt lineage：raw source、去重 staging、incremental 逐球結果，以及兩個 marts。
@@ -81,6 +86,7 @@ English:
 4. 展示遷移安全網：含邊界案例的 deterministic fixture，加上完整資料對既有 gold 的 reconciliation。
 5. 說明 cloud trust boundary 與 MPP 證據：Terraform 拆分 bootstrap／platform state、OIDC 取代已儲存金鑰、dbt 使用較小權限 identity，最終 artifact 量測 bytes 與 slot time；同時明確指出真實數值必須來自成功的雲端執行。
 6. 不只展示 DAG 圖，也解釋 orchestration 判斷：不重疊的 I/O 與 read-only products 才平行化；共享 DuckDB writer 保持序列；限制 concurrency；frozen model release 無效時在 extraction 前失敗；最後以 health gate 收尾。
+7. 打開 SQL benchmark 證據：說明 scan／join 與 selective／window workloads 為何呈現不同 scaling、median 與 p95 為何都重要，以及 exact checksum 如何先抓到平行浮點歸約差異，再以 fixed-point 修正。
 
 ### Conditional bullet after a successful cloud run / 雲端成功執行後才可使用
 

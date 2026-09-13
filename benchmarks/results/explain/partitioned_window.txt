@@ -1,0 +1,173 @@
+┌─────────────────────────────────────┐
+│┌───────────────────────────────────┐│
+││    Query Profiling Information    ││
+│└───────────────────────────────────┘│
+└─────────────────────────────────────┘
+EXPLAIN ANALYZE WITH pitcher_date AS (     SELECT         pitcher_id,         game_date,         COUNT(*) AS pitch_count,         SUM(whiff_flag) AS whiff_count     FROM silver.fact_pitch     GROUP BY pitcher_id, game_date ) SELECT     pitcher_id,     game_date,     pitch_count,     whiff_count,     SUM(pitch_count) OVER (         PARTITION BY pitcher_id         ORDER BY game_date         ROWS BETWEEN 9 PRECEDING AND CURRENT ROW     ) AS rolling_10_date_pitch_count,     SUM(whiff_count) OVER (         PARTITION BY pitcher_id         ORDER BY game_date         ROWS BETWEEN 9 PRECEDING AND CURRENT ROW     ) AS rolling_10_date_whiff_count FROM pitcher_date ORDER BY pitcher_id, game_date;
+┌────────────────────────────────────────────────┐
+│┌──────────────────────────────────────────────┐│
+││              Total Time: 0.0338s             ││
+│└──────────────────────────────────────────────┘│
+└────────────────────────────────────────────────┘
+┌───────────────────────────┐
+│           QUERY           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│      EXPLAIN_ANALYZE      │
+│    ────────────────────   │
+│                           │
+│           0 rows          │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_decompress_integ│
+│   ral_bigint(#0, 434378)  │
+│             #1            │
+│             #2            │
+│             #3            │
+│             #4            │
+│             #5            │
+│                           │
+│                           │
+│                           │
+│        39,561 rows        │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│          ORDER_BY         │
+│    ────────────────────   │
+│pitcher_date.pitcher_id ASC│
+│ pitcher_date.game_date ASC│
+│                           │
+│                           │
+│                           │
+│        39,561 rows        │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_compress_integra│
+│   l_uinteger(#0, 434378)  │
+│             #1            │
+│             #2            │
+│             #3            │
+│             #4            │
+│             #5            │
+│                           │
+│                           │
+│                           │
+│        39,561 rows        │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│             #0            │
+│             #1            │
+│             #2            │
+│             #3            │
+│             #4            │
+│             #5            │
+│                           │
+│                           │
+│                           │
+│        39,561 rows        │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│           WINDOW          │
+│    ────────────────────   │
+│        Projections:       │
+│   sum(pitch_count) OVER   │
+│  (PARTITION BY pitcher_id │
+│   ORDER BY game_date ASC  │
+│  NULLS LAST ROWS BETWEEN 9│
+│ PRECEDING AND CURRENT ROW)│
+│   sum(whiff_count) OVER   │
+│  (PARTITION BY pitcher_id │
+│   ORDER BY game_date ASC  │
+│  NULLS LAST ROWS BETWEEN 9│
+│ PRECEDING AND CURRENT ROW)│
+│                           │
+│                           │
+│                           │
+│        39,561 rows        │
+│           0.08s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_decompress_integ│
+│   ral_bigint(#0, 434378)  │
+│             #1            │
+│             #2            │
+│             #3            │
+│                           │
+│                           │
+│                           │
+│        39,561 rows        │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│       HASH_GROUP_BY       │
+│    ────────────────────   │
+│          Groups:          │
+│             #0            │
+│             #1            │
+│                           │
+│        Aggregates:        │
+│        count_star()       │
+│    sum_no_overflow(#2)    │
+│                           │
+│                           │
+│                           │
+│        39,561 rows        │
+│           0.11s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│         pitcher_id        │
+│         game_date         │
+│         whiff_flag        │
+│                           │
+│                           │
+│                           │
+│       1,355,356 rows      │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_compress_integra│
+│   l_uinteger(#0, 434378)  │
+│             #1            │
+│             #2            │
+│                           │
+│                           │
+│                           │
+│       1,355,356 rows      │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         TABLE_SCAN        │
+│    ────────────────────   │
+│           Table:          │
+│ mlb_pitch_analytics.silver│
+│        .fact_pitch        │
+│                           │
+│   Type: Sequential Scan   │
+│                           │
+│        Projections:       │
+│         pitcher_id        │
+│         game_date         │
+│         whiff_flag        │
+│                           │
+│                           │
+│                           │
+│       1,355,356 rows      │
+│           0.00s           │
+└───────────────────────────┘

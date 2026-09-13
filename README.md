@@ -4,7 +4,7 @@
 
 [English](#english) · [繁體中文](#繁體中文)
 
-**[Live dashboard / 線上儀表板](https://chuanris.github.io/mlb-pitch-analytics/)** · [Portfolio evidence / 履歷證據](docs/PORTFOLIO.md) · [AI workflow / AI 協作](docs/AI_WORKFLOW.md) · [Cloud platform / 雲端平台](docs/CLOUD.md) · [Airflow orchestration / 工作流程編排](docs/AIRFLOW.md) · [Deployment / 部署狀態](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/deploy-pages.yml) · [Operations / 維護指南](docs/OPERATIONS.md)
+**[Live dashboard / 線上儀表板](https://chuanris.github.io/mlb-pitch-analytics/)** · [Portfolio evidence / 履歷證據](docs/PORTFOLIO.md) · [SQL performance / SQL 效能](docs/SQL_PERFORMANCE.md) · [AI workflow / AI 協作](docs/AI_WORKFLOW.md) · [Cloud platform / 雲端平台](docs/CLOUD.md) · [Airflow orchestration / 工作流程編排](docs/AIRFLOW.md) · [Deployment / 部署狀態](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/deploy-pages.yml) · [Operations / 維護指南](docs/OPERATIONS.md)
 
 > A reproducible MLB Statcast analytics portfolio: Python + PostgreSQL + DuckDB/dbt + deployable GCS/BigQuery infrastructure + scikit-learn + React.
 >
@@ -30,6 +30,7 @@ It is **not** a game-winner prediction system, betting model, or guaranteed fant
 - Terraform-managed private GCS landing, BigQuery datasets, repository-scoped GitHub OIDC, split deploy/runtime identities, and guarded cloud evidence workflow
 - Airflow 3 daily orchestration with two bounded parallel stages, retries, task/DAG timeouts, overlap protection, PostgreSQL metadata and plan-only CI execution
 - Evidence-backed AI-assisted engineering workflow with human review boundaries, public failure-to-fix history and CI-enforced portfolio claims
+- Reproducible 1/2/4/8-thread DuckDB benchmark with median/p95 latency, result checksums and `EXPLAIN ANALYZE` plans over 1.35M pitch facts
 - SQL joins, CTEs, window functions, conditional aggregation, and quality gates
 - Leakage-controlled, out-of-time whiff and hard-hit probability models
 - Fantasy Pitching Radar and seven-day Stream Planner
@@ -67,6 +68,8 @@ PostgreSQL is an optional operational companion, not a replacement for DuckDB. I
 The versioned [dbt transformation project](warehouse/) reproduces the core Bronze-to-Silver-to-Gold path locally and exposes a BigQuery target with merge incrementality, daily partitioning, clustering and configurable threads. [Terraform and a manual GitHub workflow](docs/CLOUD.md) provision private GCS/BigQuery resources and keyless repository-scoped OIDC, then capture machine-readable row, physical-design, bytes and slot evidence. The infrastructure is implemented and contract-tested; a real cloud run still requires an explicitly supplied GCP project and billing account.
 
 The [Airflow 3 DAG](docs/AIRFLOW.md) schedules the existing full daily pipeline at 06:30 Pacific. It reuses the CLI's canonical command plan, separates DuckDB write barriers from safe parallel reads, prevents overlapping runs, and ends with an independent health check. CI imports and executes the complete DAG in plan-only mode so orchestration regressions fail without downloading data.
+
+The [SQL performance study](docs/SQL_PERFORMANCE.md) benchmarks four representative analytical workloads across 1/2/4/8 DuckDB threads. It stores raw runs, median/p95 latency, cross-thread result checksums and `EXPLAIN ANALYZE` plans, and explicitly separates local parallel-query evidence from distributed BigQuery MPP claims.
 
 ### Quick start
 
@@ -111,6 +114,12 @@ Set-Location warehouse
 ```
 
 This writes only isolated `dbt_mlb_*` schemas and runs the full model/test DAG. See [docs/DBT.md](docs/DBT.md) for the deterministic fixture, incremental rerun and BigQuery setup.
+
+To rerun the read-only SQL performance benchmark against the current local database:
+
+```powershell
+.\.venv\Scripts\python.exe benchmarks\run_duckdb_benchmark.py --threads 1,2,4,8 --repetitions 5 --warmups 1
+```
 
 Sample mode replaces the dashboard snapshot with the small teaching dataset and omits full-mode models and forecasts. Keep the full snapshot when only fixing the UI; do not run the sample pipeline as a prerequisite for viewing the current Compare data.
 
@@ -230,6 +239,7 @@ The browser check opens the built HTML in an isolated profile, clicks Compare, v
 
 ```text
 config/                Pipeline dates, modes, and local paths
+benchmarks/            DuckDB SQL workloads, runner, timings, checksums, and query plans
 cloud/                 Deterministic GCS landing and BigQuery evidence scripts
 data/                  Generated raw/context/Tableau data (Git-ignored)
 database/              Generated DuckDB database (Git-ignored)
@@ -288,6 +298,7 @@ Primary sources:
 - Terraform 管理的私有 GCS landing、BigQuery datasets、限定 repository 的 GitHub OIDC、分離的部署／執行身份，以及具 guard 的雲端證據 workflow
 - Airflow 3 daily orchestration：兩個有上限的平行階段、retries、task／DAG timeouts、防止重疊執行、PostgreSQL metadata，以及 plan-only CI execution
 - 可驗證的 AI 輔助工程流程：包含人工審核邊界、公開 failure-to-fix 歷史，以及由 CI 強制檢查的 portfolio claims
+- 可重跑的 DuckDB 1／2／4／8-thread benchmark：對 135 萬筆逐球 facts 保存 median／p95 latency、結果 checksums 與 `EXPLAIN ANALYZE` plans
 - 展示 SQL JOIN、CTE、視窗函數、條件彙總與資料品質閘門
 - 避免資料洩漏的跨時間揮空率與強擊球機率模型
 - Fantasy Pitching Radar 與未來七天 Stream Planner
@@ -325,6 +336,8 @@ PostgreSQL 是選用的操作型配套，而非 DuckDB 的替代品。它保存�
 受版本控制的 [dbt 轉換專案](warehouse/) 可在本機重現核心 Bronze-to-Silver-to-Gold 路徑，並提供含 merge incremental、每日分區、clustering 與可調整 threads 的 BigQuery target。[Terraform 與手動 GitHub workflow](docs/CLOUD.md)會建立私有 GCS／BigQuery 資源與限定 repository 的無金鑰 OIDC，並保存 row count、physical design、bytes 與 slot 的 machine-readable 證據。基礎設施已實作並通過 contract tests；真實雲端執行仍需明確提供 GCP project 與 billing account。
 
 [Airflow 3 DAG](docs/AIRFLOW.md) 會在 Pacific 06:30 排程既有 full daily pipeline。它重用 CLI 的 canonical command plan、將 DuckDB write barrier 與安全的平行讀取分開、防止重疊執行，最後執行獨立 health check。CI 會以 plan-only mode 匯入並走完 DAG，因此不下載資料也能阻擋 orchestration regression。
+
+[SQL 效能研究](docs/SQL_PERFORMANCE.md)會以 1／2／4／8 DuckDB threads 量測四類代表性分析 workload，保存每次執行、median／p95、跨 thread 結果 checksum 與 `EXPLAIN ANALYZE` plans，並明確區分本機平行查詢證據與分散式 BigQuery MPP claims。
 
 ### 快速開始
 
@@ -369,6 +382,12 @@ Set-Location warehouse
 ```
 
 此流程只會寫入隔離的 `dbt_mlb_*` schemas，並執行完整 model／test DAG。Deterministic fixture、incremental rerun 與 BigQuery 設定請見 [docs/DBT.md](docs/DBT.md)。
+
+若要在目前本機資料庫上重跑 read-only SQL performance benchmark：
+
+```powershell
+.\.venv\Scripts\python.exe benchmarks\run_duckdb_benchmark.py --threads 1,2,4,8 --repetitions 5 --warmups 1
+```
 
 Sample 模式會將儀表板快照替換為小型教學資料，且不包含完整模式的模型與預測。只修介面時保留完整快照；查看目前 Compare 資料不需要先執行 Sample。
 
@@ -488,6 +507,7 @@ node scripts/check_compare.mjs local-check
 
 ```text
 config/                資料日期、模式與本機路徑設定
+benchmarks/            DuckDB SQL workloads、runner、timings、checksums 與 query plans
 cloud/                 Deterministic GCS landing 與 BigQuery 證據腳本
 data/                  產生的原始／情境／Tableau 資料（Git 排除）
 database/              產生的 DuckDB 資料庫（Git 排除）

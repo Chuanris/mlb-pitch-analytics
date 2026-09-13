@@ -7,6 +7,7 @@ on:
     paths:
       - "src/**"
       - "sql/**"
+      - "benchmarks/**"
       - "oltp/**"
       - "warehouse/**"
       - "cloud/**"
@@ -59,6 +60,9 @@ jobs:
             echo "::error title=Python test suite failed::$message"
             exit "$status"
           fi
+
+      - name: Validate SQL benchmark runner and thread-invariance gate
+        run: python -m unittest tests.test_duckdb_benchmark -v
 
       - name: Validate the full pipeline plan
         run: python run_pipeline.py --mode full --workflow daily --dry-run

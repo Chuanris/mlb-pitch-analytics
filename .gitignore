@@ -28,6 +28,8 @@ warehouse/dbt_packages/
 warehouse/*.duckdb
 warehouse/.user.yml
 cloud/.artifacts/
+benchmarks/results/quick.json
+benchmarks/results/quick.md
 
 # Terraform state and local plans can contain infrastructure metadata
 **/.terraform/

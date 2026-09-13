@@ -1,0 +1,174 @@
+┌─────────────────────────────────────┐
+│┌───────────────────────────────────┐│
+││    Query Profiling Information    ││
+│└───────────────────────────────────┘│
+└─────────────────────────────────────┘
+EXPLAIN ANALYZE SELECT     context.venue_id,     context.day_night,     pitch.pitch_type,     COUNT(*) AS pitch_count,     SUM(pitch.swing_flag) AS swing_count,     SUM(pitch.whiff_flag) AS whiff_count FROM silver.fact_pitch AS pitch JOIN silver.fact_game_context AS context USING (game_pk) GROUP BY context.venue_id, context.day_night, pitch.pitch_type ORDER BY context.venue_id, context.day_night, pitch.pitch_type;
+┌────────────────────────────────────────────────┐
+│┌──────────────────────────────────────────────┐│
+││              Total Time: 0.0144s             ││
+│└──────────────────────────────────────────────┘│
+└────────────────────────────────────────────────┘
+┌───────────────────────────┐
+│           QUERY           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│      EXPLAIN_ANALYZE      │
+│    ────────────────────   │
+│                           │
+│           0 rows          │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_decompress_integ│
+│     ral_bigint(#0, 1)     │
+│__internal_decompress_strin│
+│           g(#1)           │
+│__internal_decompress_strin│
+│           g(#2)           │
+│             #3            │
+│             #4            │
+│             #5            │
+│                           │
+│                           │
+│                           │
+│          973 rows         │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│          ORDER_BY         │
+│    ────────────────────   │
+│    context.venue_id ASC   │
+│   context.day_night ASC   │
+│    pitch.pitch_type ASC   │
+│                           │
+│                           │
+│                           │
+│          973 rows         │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_compress_integra│
+│     l_usmallint(#0, 1)    │
+│__internal_compress_string_│
+│        ubigint(#1)        │
+│__internal_compress_string_│
+│        uinteger(#2)       │
+│             #3            │
+│             #4            │
+│             #5            │
+│                           │
+│                           │
+│                           │
+│          973 rows         │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_decompress_integ│
+│     ral_bigint(#0, 1)     │
+│__internal_decompress_strin│
+│           g(#1)           │
+│__internal_decompress_strin│
+│           g(#2)           │
+│             #3            │
+│             #4            │
+│             #5            │
+│                           │
+│                           │
+│                           │
+│          973 rows         │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│       HASH_GROUP_BY       │
+│    ────────────────────   │
+│          Groups:          │
+│             #0            │
+│             #1            │
+│             #2            │
+│                           │
+│        Aggregates:        │
+│        count_star()       │
+│          sum(#3)          │
+│          sum(#4)          │
+│                           │
+│                           │
+│                           │
+│          973 rows         │
+│           0.05s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│          venue_id         │
+│         day_night         │
+│         pitch_type        │
+│         swing_flag        │
+│         whiff_flag        │
+│                           │
+│                           │
+│                           │
+│       1,355,356 rows      │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_compress_string_│
+│        uinteger(#0)       │
+│             #1            │
+│             #2            │
+│__internal_compress_integra│
+│     l_usmallint(#3, 1)    │
+│__internal_compress_string_│
+│        ubigint(#4)        │
+│                           │
+│                           │
+│                           │
+│       1,355,356 rows      │
+│           0.01s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         HASH_JOIN         │
+│    ────────────────────   │
+│      Join Type: INNER     │
+│                           │
+│        Conditions:        │
+│     game_pk = game_pk     ├──────────────┐
+│                           │              │
+│                           │              │
+│                           │              │
+│       1,355,356 rows      │              │
+│           0.01s           │              │
+└─────────────┬─────────────┘              │
+┌─────────────┴─────────────┐┌─────────────┴─────────────┐
+│         TABLE_SCAN        ││         TABLE_SCAN        │
+│    ────────────────────   ││    ────────────────────   │
+│           Table:          ││           Table:          │
+│ mlb_pitch_analytics.silver││ mlb_pitch_analytics.silver│
+│        .fact_pitch        ││     .fact_game_context    │
+│                           ││                           │
+│   Type: Sequential Scan   ││   Type: Sequential Scan   │
+│                           ││                           │
+│        Projections:       ││        Projections:       │
+│          game_pk          ││          game_pk          │
+│         pitch_type        ││          venue_id         │
+│         swing_flag        ││         day_night         │
+│         whiff_flag        ││                           │
+│                           ││                           │
+│      Dynamic Filters:     ││                           │
+│ optional: game_pk>=776135 ││                           │
+│   AND optional: game_pk<  ││           0.00s           │
+│          =825108          ││                           │
+│                           ││                           │
+│                           ││                           │
+│                           ││                           │
+│       1,355,356 rows      ││         4,626 rows        │
+│           0.00s           ││          (0.00s)          │
+└───────────────────────────┘└───────────────────────────┘

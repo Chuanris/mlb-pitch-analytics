@@ -6,6 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 AI_GUIDE = ROOT / "docs" / "AI_WORKFLOW.md"
+SQL_GUIDE = ROOT / "docs" / "SQL_PERFORMANCE.md"
 PORTFOLIO = ROOT / "docs" / "PORTFOLIO.md"
 README = ROOT / "README.md"
 PR_TEMPLATE = ROOT / ".github" / "pull_request_template.md"
@@ -15,6 +16,7 @@ class PortfolioEvidenceContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ai_guide = AI_GUIDE.read_text(encoding="utf-8")
+        cls.sql_guide = SQL_GUIDE.read_text(encoding="utf-8")
         cls.portfolio = PORTFOLIO.read_text(encoding="utf-8")
         cls.readme = README.read_text(encoding="utf-8")
         cls.pr_template = PR_TEMPLATE.read_text(encoding="utf-8")
@@ -54,6 +56,16 @@ class PortfolioEvidenceContractTests(unittest.TestCase):
         self.assertIn("docs/AI_WORKFLOW.md", self.readme)
         self.assertIn("[AI workflow](AI_WORKFLOW.md)", self.portfolio)
         self.assertNotIn("Process evidence pending a published PR", self.portfolio)
+
+    def test_readme_and_portfolio_expose_sql_performance_evidence(self):
+        self.assertIn("docs/SQL_PERFORMANCE.md", self.readme)
+        self.assertIn("[DuckDB benchmark](SQL_PERFORMANCE.md)", self.portfolio)
+        for boundary in (
+            "not called a cold-cache result",
+            "does not claim physical partition pruning",
+            "cross-thread correctness checks",
+        ):
+            self.assertIn(boundary, self.sql_guide)
 
 
 if __name__ == "__main__":

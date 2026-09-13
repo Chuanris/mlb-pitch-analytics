@@ -1,0 +1,170 @@
+┌─────────────────────────────────────┐
+│┌───────────────────────────────────┐│
+││    Query Profiling Information    ││
+│└───────────────────────────────────┘│
+└─────────────────────────────────────┘
+EXPLAIN ANALYZE SELECT     pitcher_id,     pitch_type,     COUNT(*) AS pitch_count,     SUM(swing_flag) AS swing_count,     SUM(whiff_flag) AS whiff_count,     ROUND(AVG(CAST(release_speed AS DECIMAL(10, 3))), 3) AS avg_release_speed FROM silver.fact_pitch GROUP BY pitcher_id, pitch_type ORDER BY pitcher_id, pitch_type;
+┌────────────────────────────────────────────────┐
+│┌──────────────────────────────────────────────┐│
+││              Total Time: 0.0198s             ││
+│└──────────────────────────────────────────────┘│
+└────────────────────────────────────────────────┘
+┌───────────────────────────┐
+│           QUERY           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│      EXPLAIN_ANALYZE      │
+│    ────────────────────   │
+│                           │
+│           0 rows          │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_decompress_integ│
+│   ral_bigint(#0, 434378)  │
+│__internal_decompress_strin│
+│           g(#1)           │
+│             #2            │
+│             #3            │
+│             #4            │
+│             #5            │
+│                           │
+│                           │
+│                           │
+│         5,323 rows        │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│          ORDER_BY         │
+│    ────────────────────   │
+│ mlb_pitch_analytics.silver│
+│ .fact_pitch.pitcher_id ASC│
+│ mlb_pitch_analytics.silver│
+│ .fact_pitch.pitch_type ASC│
+│                           │
+│                           │
+│                           │
+│         5,323 rows        │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_compress_integra│
+│   l_uinteger(#0, 434378)  │
+│__internal_compress_string_│
+│        uinteger(#1)       │
+│             #2            │
+│             #3            │
+│             #4            │
+│             #5            │
+│                           │
+│                           │
+│                           │
+│         5,323 rows        │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│         pitcher_id        │
+│         pitch_type        │
+│        pitch_count        │
+│        swing_count        │
+│        whiff_count        │
+│     avg_release_speed     │
+│                           │
+│                           │
+│                           │
+│         5,323 rows        │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_decompress_integ│
+│   ral_bigint(#0, 434378)  │
+│__internal_decompress_strin│
+│           g(#1)           │
+│             #2            │
+│             #3            │
+│             #4            │
+│             #5            │
+│                           │
+│                           │
+│                           │
+│         5,323 rows        │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│       HASH_GROUP_BY       │
+│    ────────────────────   │
+│          Groups:          │
+│             #0            │
+│             #1            │
+│                           │
+│        Aggregates:        │
+│        count_star()       │
+│    sum_no_overflow(#2)    │
+│    sum_no_overflow(#3)    │
+│          avg(#4)          │
+│                           │
+│                           │
+│                           │
+│         5,323 rows        │
+│           0.06s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│         pitcher_id        │
+│         pitch_type        │
+│         swing_flag        │
+│         whiff_flag        │
+│   CAST(release_speed AS   │
+│       DECIMAL(10,3))      │
+│                           │
+│                           │
+│                           │
+│       1,355,356 rows      │
+│           0.02s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│__internal_compress_integra│
+│   l_uinteger(#0, 434378)  │
+│__internal_compress_string_│
+│        uinteger(#1)       │
+│             #2            │
+│             #3            │
+│             #4            │
+│                           │
+│                           │
+│                           │
+│       1,355,356 rows      │
+│           0.00s           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         TABLE_SCAN        │
+│    ────────────────────   │
+│           Table:          │
+│ mlb_pitch_analytics.silver│
+│        .fact_pitch        │
+│                           │
+│   Type: Sequential Scan   │
+│                           │
+│        Projections:       │
+│         pitcher_id        │
+│         pitch_type        │
+│         swing_flag        │
+│         whiff_flag        │
+│       release_speed       │
+│                           │
+│                           │
+│                           │
+│       1,355,356 rows      │
+│           0.01s           │
+└───────────────────────────┘
