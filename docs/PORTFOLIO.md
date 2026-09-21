@@ -24,6 +24,14 @@ The [observability implementation](OBSERVABILITY.md) persists SQL-quality outcom
 
 [資料觀測實作](OBSERVABILITY.md)會在既有 CLI／Airflow 品質閘門失敗前，保存 SQL 品質結果及 freshness／schema／筆數提醒。合成故障測試驗證失敗重試不會取代成功基準，並保留恢復歷史。Calendar freshness 與總筆數閾值的限制已記錄；尚未設定外部 paging。
 
+Run `.\.venv\Scripts\python.exe -m src.observability_demo` for a credential-free, in-memory demonstration. Its machine-readable output verifies a healthy date (`pass`), an unsettled date (`attention`), and missing same-date completed-game coverage (`error`). This proves the implemented branch contract; it does not prove upstream source completeness.
+
+The Data Platform CI workflow is configured to publish the same JSON as `observability-contract-evidence` for 30 days, but cite it as a public run artifact only after the updated workflow completes successfully on GitHub.
+
+執行 `.\.venv\Scripts\python.exe -m src.observability_demo` 可使用不需憑證的 in-memory 展示。機器可讀輸出會驗證健康日期（`pass`）、未定狀態日期（`attention`），以及 completed game 缺少同日 coverage（`error`）。這能證明已實作的分支契約，但不能證明上游來源完整。
+
+Data Platform CI 已設定將同一份 JSON 以 `observability-contract-evidence` 保存 30 天；只有更新後的 workflow 在 GitHub 成功完成，才能把它引用為公開 run artifact。
+
 Published CI baseline and current local verification:
 
 - [Data platform CI run 34642844311](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34642844311) passed all six jobs: Python/pipeline contracts, PostgreSQL integration, two dbt builds, BigQuery parse/MPP contracts, two Terraform module validations and Airflow DAG execution.
@@ -52,7 +60,7 @@ Published CI baseline and current local verification:
 
 English:
 
-- Implemented persistent data observability with freshness gates, schema-drift detection, volume thresholds and SQL quality history; integrated failure propagation into Airflow and verified retry-safe baselines and recovery using injected faults.
+- Implemented a persistent DuckDB observability gate with freshness/schema/SQL-quality history and same-date game coverage; separated deterministic integrity errors from unsettled/baseline/volume uncertainty, integrated Airflow failure propagation, and verified the contract with 15 regression tests plus an in-memory demo.
 
 - Built a tested medallion analytics pipeline for 1.35M+ MLB Statcast pitches using Python, DuckDB, SQL and dbt, producing reusable pitcher and count-strategy marts.
 - Implemented an idempotent incremental dbt model and 20 schema/business/reconciliation tests; matched 1,355,356 pitch rows and both analytical marts against legacy gold outputs.
@@ -66,7 +74,7 @@ English:
 
 繁體中文：
 
-- 實作持久化資料觀測，涵蓋 freshness 閘門、schema drift、筆數閾值與 SQL 品質歷史；串接 Airflow 失敗傳遞，並以故障注入驗證重試基準與恢復行為。
+- 實作持久化 DuckDB observability gate，涵蓋 freshness／schema／SQL 品質歷史與同日場次 coverage；區分確定性 integrity errors 與 unsettled／baseline／volume 不確定性、串接 Airflow 失敗傳遞，並以 15 項回歸測試及 in-memory demo 驗證契約。
 
 - 使用 Python、DuckDB、SQL 與 dbt 建立具測試的 Medallion 分析管線，處理超過 135 萬筆 MLB Statcast 逐球資料，產出可重用的投手與球數策略 marts。
 - 實作可冪等重跑的 incremental dbt model 與 20 項 schema、商業規則及 reconciliation tests；1,355,356 筆逐球資料與兩個分析 marts 均對齊既有 gold 輸出。

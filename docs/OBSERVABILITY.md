@@ -1,64 +1,96 @@
 # Data observability / 資料可觀測性
 
-`src.validate_data` now records observations before enforcing its quality gate. Both the pipeline CLI and the existing Airflow `validate_data` task use this entry point. A freshness breach exits 1; an invalid dataset, schema change, volume anomaly or failed SQL check exits 2. Downstream tasks stop under their existing success dependencies. Each attempt records its own ID, timestamp, metrics, SQL check outcomes, alerts and suggested actions.
+`src.validate_data` persists observations before enforcing the pipeline gate; `src.observability` runs the same checks without coverage exports. Overall precedence is error (exit 2), attention (exit 1), otherwise pass (exit 0). Both nonzero exits stop downstream tasks under existing pipeline/Airflow success dependencies.
 
-`src.validate_data` 會先保存觀測紀錄，再執行品質閘門。Pipeline CLI 與既有 Airflow `validate_data` task 共用此入口。新鮮度超標回傳 1；無效資料、schema 變更、筆數異常或 SQL 檢查失敗回傳 2。下游依既有成功依賴停止。每次嘗試都有自己的 ID、時間、指標、SQL 檢查結果、提醒及處理建議。
+`src.validate_data` 先保存觀測，再執行管線閘門；`src.observability` 執行相同檢查但不匯出 coverage。整體狀態優先順序為 error（exit 2）、attention（exit 1）、其餘 pass（exit 0）。兩種非零退出碼都會依既有 pipeline／Airflow 成功依賴停止下游。
 
 ## Policy / 規則
 
-The independent [policy file](../config/observability.json) keeps model lineage configuration unchanged:
+The [policy](../config/observability.json) is independent of model lineage configuration.
 
-| Check | Rule | Baseline |
+[Policy](../config/observability.json) 與模型 lineage 設定分開。
+
+| Check / 檢查 | Current contract / 目前契約 |
+| --- | --- |
+| Freshness | More than 2 days behind the configured expected end: attention. Empty/future data: error. Active full ranges use yesterday UTC with the default UTC clock. / 落後截止日超過 2 天為 attention；空資料或未來日期為 error。預設 UTC 時鐘下，動態 full range 以 UTC 昨天為上限。 |
+| Global row volume | Total pitch rows outside 0.90–1.50 times the previous successful total: error. This cross-run gate is unchanged. / 總筆數超出前次成功 run 的 0.90–1.50 倍仍為 error；跨 run 閘門未改動。 |
+| Schema drift | Ordered names/types in silver.fact_pitch differ from the first passing run in scope: error. / 與同 scope 首次成功 run 的欄位名稱、順序或型別不同為 error。 |
+| Data quality | Failed SQL checks, SQL exceptions and NULL results fail the gate. / SQL 檢查失敗、查詢例外或 NULL 均使閘門失敗。 |
+
+## Recent-partition contract / 最近分區契約
+
+The output key remains `recent_partition_completeness`. A pass means only that the evaluated date meets local coverage/status rules and configured volume heuristics; it does not prove source completeness.
+
+輸出名稱仍為 `recent_partition_completeness`。Pass 僅表示受評估日期符合本地 coverage／status 規則與投球量 heuristic，不能證明來源完整。
+
+- Dates must be within `metadata.pipeline_ranges` and strictly before today's **America/Los_Angeles** date. Aware datetimes are converted by instant; naive datetimes are interpreted as UTC. The timezone is fixed in code, not configurable through policy.
+- Completed statuses are `Final`, `Game Over`, `Completed Early`. `Postponed` is ignored for unsettled detection; all other values, including NULL, are unsettled.
+- Status evaluation retains `(game_pk, game_date, game_status)`; pitch joins deduplicate to `(game_pk, game_date)`. Coverage requires matching game IDs and `pitch.game_date = context.official_date`.
+- The latest date containing completed or unsettled games is evaluated; postponed-only dates are skipped. At most 14 preceding such dates are considered, then dates without completed games, with missing same-date coverage, or with unsettled games are excluded. Filtering does not replenish the window. Retained dates are **eligible baseline dates**, not independently verified complete dates.
+- The baseline is the median of daily pitches per completed game, requiring at least 7 eligible dates. It is recomputed from current DuckDB rows, independently of successful-run history.
+
+- 日期必須位於 pipeline ranges，且嚴格早於洛杉磯今天。Aware datetime 依同一時刻轉換；naive datetime 明確視為 UTC。時區固定於程式，不是可調 policy。
+- Completed 狀態為 Final、Game Over、Completed Early；Postponed 不造成 unsettled；其他值（包含 NULL）均為 unsettled。
+- 狀態評估保留 game/date/status；join pitches 前去重至 game/date。Coverage 同時要求 game ID 與 official date 相符。
+- 評估最新含 completed 或 unsettled games 的日期，略過 postponed-only 日期；最多取前 14 個同類日期，再排除無 completed games、coverage 不足或 unsettled 日期。篩除後不往更早日期補齊。留下的是 eligible baseline dates，並非經獨立驗證的完整日期。
+- Baseline 為各日期「每場 completed game 平均投球數」的中位數，至少需要 7 個 eligible dates；由目前 DuckDB 重算，與成功 run 歷史基準分開。
+
+Branches execute in this order / 分支依下列順序執行：
+
+| Condition / 條件 | Status | Assessment |
 | --- | --- | --- |
-| Freshness | At most two calendar days behind the configured expected end date | Uses dataset mode; active full ranges are capped at yesterday UTC, historical/sample ranges at their configured end |
-| Row volume | Total pitch rows between 0.90 and 1.50 times the prior successful total | Last passing observation in the same scope |
-| Schema drift | Ordered column names and SQL types match | First passing observation in the same scope |
-| Data quality | All existing SQL checks pass; SQL exceptions and null results fail | Existing `src.validate_data.CHECKS` |
+| No completed or unsettled dates / 無 completed 或 unsettled 日期 | bootstrap | Not emitted / 不輸出 |
+| Completed game lacks same-date pitches / 已完賽場次無同日 pitches | error | Not emitted / 不輸出 |
+| Evaluated date has unsettled games / 受評估日期含未定狀態 | attention | unknown_unsettled_date |
+| Too few eligible baseline dates / eligible 日期不足 | attention | unknown_insufficient_baseline |
+| Daily ratio outside 0.65–1.35, or minimum-game ratio below 0.65 / 日比例超界或最低單場比例過低 | attention | volume_anomaly |
+| All applicable conditions satisfied / 通過適用條件 | pass | Not emitted / 不輸出 |
 
-獨立的 [policy file](../config/observability.json)設定兩天 freshness 容許值與 0.90–1.50 的總筆數比例。Freshness 依資料庫的 mode 判斷：歷史／sample 對照設定截止日；動態 full range 以 UTC 昨天為上限。Schema 比較欄位名稱、順序與 SQL 型別；既有 SQL 品質檢查也一併保存，查詢例外或 null 不算通過。
+Diagnostics retain `ratio`, `minimum_game_ratio`, `baseline_median_pitches_per_game`, pitch counts and coverage. The minimum-game heuristic compares one game count with the median of daily per-game averages, not a calibrated distribution of individual games. There is no individual-game upper-bound check.
 
-Scope includes the source path, mode, configured date ranges and policy. The first successful observation bootstraps schema and volume baselines and explicitly reports that no comparison was available. Failed or attention observations never replace a baseline. A rejected schema remains rejected on retries. A path/range/policy change starts a new scope; review such changes as baseline changes, especially during migrations. Preserve the old history for audit.
+診斷保留日比例、最低單場比例、baseline median、投球數與 coverage。單場 heuristic 比較最低單場投球數與「各日每場平均」的中位數，並非經校準的單場分布；目前沒有單場上界檢查。
 
-Scope 包含來源路徑、mode、日期設定與 policy。第一次成功觀測建立基準，並明確顯示尚無比較值。失敗或 attention 紀錄不更新基準，因此重試不會把錯誤 schema 接受成正常。改動路徑、日期或 policy 會建立新 scope，遷移時應將這些改動視為 baseline 變更審查，保留舊歷史供稽核。
+## Limits and review findings / 限制與審查結果
+
+The evaluated date is reported as `latest_evaluated_date`. If it has no completed games, `latest_completed_date`, per-completed-game average and coverage ratio are NULL; active/unknown-only dates return attention even without completed history. With no completed or unsettled dates, bootstrap can still contribute to an overall pass. When unsettled games and missing completed-game coverage occur on the same date, the deterministic coverage error takes precedence.
+
+`latest_evaluated_date` 記錄受評估日期；當日無 completed games 時，`latest_completed_date`、每場平均與 coverage ratio 為 NULL。只有 active／unknown 的日期即使無 completed history 也回傳 attention。完全沒有 completed 或 unsettled 日期時，bootstrap 仍可能讓整體為 pass。同一天同時有 unsettled 與 missing coverage 時，可確定的 coverage error 優先。
+
+Nonzero but partially loaded games, uniformly truncated history, and games missing entirely from local context cannot be ruled out by pitch counts. An anomaly does not prove truncation or duplication. Completeness needs independent schedule/play-by-play evidence or source-to-target reconciliation. Global row-volume errors retain their existing severity and likewise do not establish a root cause.
+
+非零但部分載入的場次、歷史一致性截斷、以及本地 context 完全遺漏的比賽，均無法僅靠 pitch counts 排除。Anomaly 不等於已證明截斷或重複；完整性需要獨立賽程／play-by-play 證據或來源至目的端對帳。Global row-volume error 保留既有嚴重性，同樣不能單獨證明根因。
 
 ## Run and inspect / 執行與查閱
 
 ```powershell
-# Full quality gate plus history; read-only access to source DuckDB
-.\.venv\Scripts\python.exe -m src.validate_data
-
-# Same observation checks, JSON output, without coverage-export steps
+# Read-only source DuckDB; writes local observation history and JSON
 .\.venv\Scripts\python.exe -m src.observability
 
-# Fault-injection tests use temporary synthetic databases
+# Quality gate plus coverage exports
+.\.venv\Scripts\python.exe -m src.validate_data
+
+# Observability tests and full Python suite
 .\.venv\Scripts\python.exe -m unittest tests.test_observability -v
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-The Git-ignored `outputs/observability/` directory contains:
+Git-ignored `outputs/observability/` holds `history.sqlite`, per-attempt JSON and an atomically replaced `latest.json`. Only overall passing runs establish cross-run schema/row-volume baselines. Scope includes database path, mode, configured ranges and policy; changes start a new scope. SQLite serializes baseline selection and insertion. Concurrent JSON exports can finish out of order, so use SQLite sequence for history ordering. No external notification service is configured.
 
-- `history.sqlite`: transactional observation history, indexed by scope and status;
-- `<run_id>.json`: a separate record for every attempt, including failures;
-- `latest.json`: atomically replaced convenience snapshot.
+Git 排除的 outputs/observability 保存 SQLite 歷史、每次嘗試的 JSON 與原子替換的 latest.json。只有整體 pass 的 run 可成為跨 run schema／總筆數基準。Scope 包含資料庫路徑、mode、日期設定與 policy；更動會建立新 scope。SQLite 將基準選取與新增序列化；並行 JSON 匯出可能亂序，歷史應以 SQLite sequence 排序。目前沒有外部通知服務。
 
-SQL quality results also remain in `outputs/data_quality_report.csv`. SQLite is the authoritative history; JSON is a convenient export. SQLite baseline selection and insertion share a write transaction. The existing Airflow run-concurrency limit remains in force. A concurrent reader should use the SQLite sequence for ordering, since completion of JSON exports can race across separate processes.
+Review alerts before rerunning: verify dates/extraction logs for freshness, reconcile source/load evidence for volume anomalies, and inspect same-date game coverage for integrity failures. Attention still stops downstream execution; it expresses uncertainty rather than approval to publish.
 
-Git 排除的 `outputs/observability/` 保存 SQLite 交易式歷史、每次嘗試獨立的 JSON，以及原子替換的 latest snapshot。SQLite 是歷史依據，JSON 供查閱；基準查詢與新增紀錄在同一個寫入交易內完成。多程序的 JSON 匯出可能交錯，歷史排序以 SQLite sequence 為準。
+重跑前先檢視 alert：freshness 核對日期與抽取紀錄；volume anomaly 核對來源／載入證據；integrity failure 檢查同日場次 coverage。Attention 仍停止下游，表達的是不確定性，並非允許發布。
 
-## Recovery and evidence / 恢復與證據
+## Evidence and resume wording / 證據與履歷描述
 
-Read the named alert before rerunning. For freshness, inspect the configured ranges, extraction logs and game calendar. For row volume, investigate truncation, duplicate loading or an intentional backfill. For schema drift, review the migration and consumers before creating a new baseline scope. Fix the source and rerun; the old failures stay in history and the new passing observation records recovery.
+[Tests](../tests/test_observability.py) cover same-date coverage, deterministic-error precedence, baseline eligibility, insufficient history, mixed completed/unsettled dates, postponed games, duplicate terminal statuses, Los Angeles boundaries, low/high volume anomalies, normal volume, persistence and recovery. On 2026-09-20, the Python suite reported 144 tests: 141 passed and 3 PostgreSQL integration tests skipped because no integration database was configured. These are project-wide counts, not 144 observability-specific tests.
 
-重跑前先查看 alert：freshness 檢查日期設定、擷取紀錄與球賽日曆；筆數異常檢查截斷、重複載入或刻意 backfill；schema drift 先檢查 migration 與 downstream consumers。修復來源後重跑，舊失敗仍保留，新通過紀錄表達恢復。
+[測試](../tests/test_observability.py)涵蓋同日 coverage、deterministic error 優先序、基準資格、歷史不足、completed／unsettled 混合日期、延賽、terminal 狀態重複、洛杉磯日期邊界、高低投球量、正常投球量、持久化與恢復。2026-09-20 全專案 Python suite 共 144 項：141 通過，3 項因未設定 PostgreSQL integration database 跳過；不是 144 項 observability 專屬測試。
 
-[Fault tests](../tests/test_observability.py) cover historical sample freshness, successful bootstrap, an 80% volume loss, repeated rejection without baseline poisoning, recovery, persistent added-column drift, missing required columns, stale/empty data, SQL failure and invalid policy. CI replays these tests in its Python job. Airflow surfaces exit failures and the `ALERT` messages through its normal task logs and retries. No outbound email, Slack or paging integration is configured.
+The 2026-09-20 real DuckDB smoke run read 1,355,356 pitch rows and passed 33 SQL checks. Recent partition passed (15/15 games covered; daily ratio 0.9961); overall status was attention because data through September 9 lagged the expected September 20 cutoff by 11 days. These are dated results, not a current freshness claim.
 
-[故障測試](../tests/test_observability.py)涵蓋歷史 sample、新基準、80% 筆數流失、重試不污染基準、恢復、持續的新增欄位 drift、必要欄位遺失、過期／空資料、SQL 失敗與錯誤 policy。CI 在 Python job 重播；Airflow 透過 task logs、失敗狀態及 retries 顯示事件。目前沒有外部 email、Slack 或 paging 通知。
+2026-09-20 真實 DuckDB smoke run 讀取 1,355,356 pitch rows，33 項 SQL 檢查通過；recent partition 通過（15/15 場 coverage、日比例 0.9961）。整體 attention 原因為資料停在 9 月 9 日，比預期 9 月 20 日落後 11 天。此為有日期的驗證紀錄，不代表目前新鮮度。
 
-Freshness is a calendar proxy, not a schedule-aware completeness proof. Total-volume bounds detect large changes; they may miss a single missing day in a large historical table and do not model seasonal daily volume. Schema comparison currently covers `silver.fact_pitch`. Initial schema acceptance depends on existing SQL checks, so bootstrap is not proof of an approved schema contract. These are explicit boundaries of this implementation.
-
-Freshness 是 calendar proxy，不能證明球賽完整性。總筆數比例可偵測大幅變動，但龐大歷史表漏一天仍可能未超標，也尚未建立季節性每日筆數模型。Schema 比較目前涵蓋 `silver.fact_pitch`；初次接受依賴既有 SQL 檢查，bootstrap 不等於 schema 已經人工核准。
-
-## Resume bullet / 履歷重點
-
-- Implemented persistent data observability for a DuckDB analytics pipeline with freshness gates, schema-drift detection, volume thresholds and SQL quality history; integrated failure propagation into Airflow and verified retry-safe baselines and recovery using injected faults.
-- 為 DuckDB 分析管線實作持久化資料觀測，涵蓋 freshness 閘門、schema drift、筆數閾值與 SQL 品質歷史；串接 Airflow 失敗傳遞，並用故障注入驗證重試基準與恢復行為。
+- Built a DuckDB observability gate with persistent audit history, same-date game coverage checks, eligible historical baselines, and timezone-aware partition evaluation; distinguished integrity failures from volume anomalies with 15 regression contract tests.
+- 建置 DuckDB 可觀測性閘門，包含持久化稽核紀錄、同日場次 coverage、eligible 歷史基準與時區日期判定；以 15 項契約回歸測試驗證完整性錯誤與投球量異常的區分。

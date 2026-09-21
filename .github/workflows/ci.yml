@@ -71,6 +71,20 @@ jobs:
       - name: Validate the full pipeline plan
         run: python run_pipeline.py --mode full --workflow daily --dry-run
 
+      - name: Generate observability contract evidence
+        run: |
+          mkdir -p outputs/ci
+          python -m src.observability_demo > outputs/ci/observability-demo.json
+          python -m json.tool outputs/ci/observability-demo.json
+
+      - name: Upload observability contract evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: observability-contract-evidence
+          path: outputs/ci/observability-demo.json
+          if-no-files-found: error
+          retention-days: 30
+
   postgres-oltp-integration:
     runs-on: ubuntu-latest
     services:

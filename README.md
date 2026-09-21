@@ -73,6 +73,8 @@ The [Airflow 3 DAG](docs/AIRFLOW.md) schedules the existing full daily pipeline 
 
 The [SQL performance study](docs/SQL_PERFORMANCE.md) benchmarks four representative analytical workloads across 1/2/4/8 DuckDB threads. It stores raw runs, median/p95 latency, cross-thread result checksums and `EXPLAIN ANALYZE` plans, and explicitly separates local parallel-query evidence from distributed BigQuery MPP claims.
 
+To inspect the recent-partition observability contract without credentials, downloads or writes to project data, run `.\.venv\Scripts\python.exe -m src.observability_demo`. The in-memory demo emits verified pass, attention and deterministic-error scenarios as JSON. Data Platform CI is configured to upload that JSON as the 30-day `observability-contract-evidence` artifact after the Python tests and pipeline-plan check pass.
+
 ### Quick start
 
 Requirements: Python 3.11+ for the pipeline; Node.js 22.12+ and npm for the dashboard (GitHub Pages uses Node 22).
@@ -342,6 +344,8 @@ PostgreSQL 是選用的操作型配套，而非 DuckDB 的替代品。它保存�
 [Airflow 3 DAG](docs/AIRFLOW.md) 會在 Pacific 06:30 排程既有 full daily pipeline。它重用 CLI 的 canonical command plan、將 DuckDB write barrier 與安全的平行讀取分開、防止重疊執行，最後執行獨立 health check。CI 會以 plan-only mode 匯入並走完 DAG，因此不下載資料也能阻擋 orchestration regression。
 
 [SQL 效能研究](docs/SQL_PERFORMANCE.md)會以 1／2／4／8 DuckDB threads 量測四類代表性分析 workload，保存每次執行、median／p95、跨 thread 結果 checksum 與 `EXPLAIN ANALYZE` plans，並明確區分本機平行查詢證據與分散式 BigQuery MPP claims。
+
+若要在不使用憑證、不下載資料、也不寫入專案資料的情況下檢視 recent-partition observability 契約，可執行 `.\.venv\Scripts\python.exe -m src.observability_demo`。此 in-memory demo 會以 JSON 輸出已驗證的 pass、attention 與 deterministic-error 情境。Data Platform CI 已設定在 Python tests 與 pipeline-plan check 通過後，上傳保存 30 天的 `observability-contract-evidence` JSON artifact。
 
 ### 快速開始
 
