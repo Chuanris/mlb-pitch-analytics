@@ -12,7 +12,7 @@ The [policy](../config/observability.json) is independent of model lineage confi
 
 | Check / 檢查 | Current contract / 目前契約 |
 | --- | --- |
-| Freshness | More than 2 days behind the configured expected end: attention. Empty/future data: error. Active full ranges use yesterday UTC with the default UTC clock. / 落後截止日超過 2 天為 attention；空資料或未來日期為 error。預設 UTC 時鐘下，動態 full range 以 UTC 昨天為上限。 |
+| Freshness | More than 2 days behind the configured expected end: attention. Empty data or rows after the configured complete-date cutoff: error. Active ranges use yesterday in America/Los_Angeles without relying on the machine timezone. / 落後截止日超過 2 天為 attention；空資料或超過完整日期 cutoff 的資料為 error。動態 range 使用 America/Los_Angeles 的昨天，不依賴機器時區。 |
 | Global row volume | Total pitch rows outside 0.90–1.50 times the previous successful total: error. This cross-run gate is unchanged. / 總筆數超出前次成功 run 的 0.90–1.50 倍仍為 error；跨 run 閘門未改動。 |
 | Schema drift | Ordered names/types in silver.fact_pitch differ from the first passing run in scope: error. / 與同 scope 首次成功 run 的欄位名稱、順序或型別不同為 error。 |
 | Data quality | Failed SQL checks, SQL exceptions and NULL results fail the gate. / SQL 檢查失敗、查詢例外或 NULL 均使閘門失敗。 |
@@ -84,9 +84,9 @@ Review alerts before rerunning: verify dates/extraction logs for freshness, reco
 
 ## Evidence and resume wording / 證據與履歷描述
 
-[Tests](../tests/test_observability.py) cover same-date coverage, deterministic-error precedence, baseline eligibility, insufficient history, mixed completed/unsettled dates, postponed games, duplicate terminal statuses, Los Angeles boundaries, low/high volume anomalies, normal volume, persistence and recovery. On 2026-09-21, the Python suite reported 150 tests: 147 passed and 3 PostgreSQL integration tests skipped because no integration database was configured. These are project-wide counts, not 150 observability-specific tests.
+[Tests](../tests/test_observability.py) cover same-date coverage, deterministic-error precedence, baseline eligibility, insufficient history, mixed completed/unsettled dates, postponed games, duplicate terminal statuses, Los Angeles extraction/freshness boundaries, low/high volume anomalies, normal volume, persistence and recovery. On 2026-09-21, the Python suite reported 155 tests: 152 passed and 3 PostgreSQL integration tests skipped because no integration database was configured. These are project-wide counts, not 155 observability-specific tests.
 
-[測試](../tests/test_observability.py)涵蓋同日 coverage、deterministic error 優先序、基準資格、歷史不足、completed／unsettled 混合日期、延賽、terminal 狀態重複、洛杉磯日期邊界、高低投球量、正常投球量、持久化與恢復。2026-09-21 全專案 Python suite 共 150 項：147 通過，3 項因未設定 PostgreSQL integration database 跳過；不是 150 項 observability 專屬測試。
+[測試](../tests/test_observability.py)涵蓋同日 coverage、deterministic error 優先序、基準資格、歷史不足、completed／unsettled 混合日期、延賽、terminal 狀態重複、洛杉磯 extraction／freshness 日期邊界、高低投球量、正常投球量、持久化與恢復。2026-09-21 全專案 Python suite 共 155 項：152 通過，3 項因未設定 PostgreSQL integration database 跳過；不是 155 項 observability 專屬測試。
 
 The 2026-09-20 real DuckDB smoke run read 1,355,356 pitch rows and passed 33 SQL checks. Recent partition passed (15/15 games covered; daily ratio 0.9961); overall status was attention because data through September 9 lagged the expected September 20 cutoff by 11 days. These are dated results, not a current freshness claim.
 

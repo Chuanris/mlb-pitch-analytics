@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterator
+from zoneinfo import ZoneInfo
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+LOS_ANGELES = ZoneInfo("America/Los_Angeles")
+
+
+def los_angeles_date(now: datetime | None = None) -> date:
+    """Return the MLB business date without relying on the machine timezone."""
+    instant = now or datetime.now(timezone.utc)
+    if instant.tzinfo is None or instant.utcoffset() is None:
+        instant = instant.replace(tzinfo=timezone.utc)
+    return instant.astimezone(LOS_ANGELES).date()
 
 
 def load_config(config_path: str | Path) -> dict:
@@ -48,7 +58,7 @@ def resolved_mode_ranges(config: dict, mode: str, today: date | None = None) -> 
             "chunk_days": parameters["chunk_days"],
         }
     ]
-    current_day = today or date.today()
+    current_day = today or los_angeles_date()
     latest_complete_day = current_day - timedelta(days=1)
     resolved = []
     for configured in configured_ranges:

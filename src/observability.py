@@ -10,11 +10,10 @@ from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
-from zoneinfo import ZoneInfo
 
 import duckdb
 
-from src.common import load_config, project_path, resolved_mode_ranges
+from src.common import load_config, los_angeles_date, project_path, resolved_mode_ranges
 
 
 def quality_results(connection, checks):
@@ -37,8 +36,7 @@ def recent_partition_result(connection, policy, now):
     minimum_baseline = policy["recent_partition_minimum_baseline_dates"]
     lower = policy["minimum_pitches_per_game_ratio"]
     upper = policy["maximum_pitches_per_game_ratio"]
-    instant = now if now.tzinfo is not None and now.utcoffset() is not None else now.replace(tzinfo=timezone.utc)
-    los_angeles_today = instant.astimezone(ZoneInfo("America/Los_Angeles")).date()
+    current_day = los_angeles_date(now)
     rows = connection.execute("""
         WITH candidate_games AS (
             SELECT DISTINCT context.game_pk, context.official_date AS game_date, context.game_status
@@ -87,7 +85,7 @@ def recent_partition_result(connection, policy, now):
         WHERE completed_games > 0 OR unsettled_games > 0
         ORDER BY date_statuses.game_date DESC
         LIMIT ?
-    """, [los_angeles_today, lookback + 1]).fetchall()
+    """, [current_day, lookback + 1]).fetchall()
     if not rows:
         return "bootstrap", dict(eligible_baseline_dates=0), "No completed game dates are available for comparison."
 
@@ -183,11 +181,12 @@ def observe(config, policy, *, checks=(), now=None, history_path=None):
                 else:
                     add("schema_drift", "bootstrap", "No successful baseline; first successful observation establishes it.")
                 count, latest = connection.execute("SELECT COUNT(*), MAX(game_date) FROM silver.fact_pitch").fetchone()
-                expected = max(r["end_date"] for r in resolved_mode_ranges(config, mode, today=now.date()))
+                current_day = los_angeles_date(now)
+                expected = max(r["end_date"] for r in resolved_mode_ranges(config, mode, today=current_day))
                 lag = (expected - latest).days if latest else None
                 report["metrics"] = dict(mode=mode, rows=count, data_through=str(latest) if latest else None,
                                          expected_through=str(expected), lag_days=lag)
-                invalid = latest is None or latest > now.date() or count == 0
+                invalid = latest is None or latest > expected or count == 0
                 add("freshness", "error" if invalid else "attention" if lag > grace else "pass",
                     dict(report["metrics"]), "Check configured dates and the MLB calendar before refreshing; this is a calendar-age SLA.")
                 if previous:

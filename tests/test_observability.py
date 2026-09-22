@@ -166,6 +166,54 @@ class ObservabilityTests(unittest.TestCase):
         result = self.check(self.run_observation(), "freshness")
         self.assertNotIn("recent_partition", result["detail"])
 
+    def test_freshness_expected_date_uses_los_angeles_boundary(self):
+        self.config["sample"] = {
+            "ranges": [{
+                "season": 2025,
+                "start_date": "2025-04-01",
+                "end_date": "2025-04-10",
+                "chunk_days": 7,
+                "latest_complete_day": True,
+            }]
+        }
+        with duckdb.connect(str(self.db)) as connection:
+            connection.execute("DELETE FROM silver.fact_pitch WHERE game_date = DATE '2025-04-03'")
+            connection.execute("DELETE FROM silver.fact_game_context WHERE official_date = DATE '2025-04-03'")
+
+        report = observe(
+            self.config,
+            self.policy,
+            now=datetime(2025, 4, 4, 2, 0, tzinfo=timezone.utc),
+        )
+        freshness = self.check(report, "freshness")
+
+        self.assertEqual(freshness["status"], "pass")
+        self.assertEqual(freshness["detail"]["data_through"], "2025-04-02")
+        self.assertEqual(freshness["detail"]["expected_through"], "2025-04-02")
+        self.assertEqual(freshness["detail"]["lag_days"], 0)
+
+    def test_freshness_rejects_current_los_angeles_date_as_complete(self):
+        self.config["sample"] = {
+            "ranges": [{
+                "season": 2025,
+                "start_date": "2025-04-01",
+                "end_date": "2025-04-10",
+                "chunk_days": 7,
+                "latest_complete_day": True,
+            }]
+        }
+
+        report = observe(
+            self.config,
+            self.policy,
+            now=datetime(2025, 4, 4, 2, 0, tzinfo=timezone.utc),
+        )
+        freshness = self.check(report, "freshness")
+
+        self.assertEqual(freshness["status"], "error")
+        self.assertEqual(freshness["detail"]["data_through"], "2025-04-03")
+        self.assertEqual(freshness["detail"]["expected_through"], "2025-04-02")
+
     def test_quality_entrypoint_persists_then_exits_before_exports(self):
         from src import validate_data
         with duckdb.connect(str(self.db)) as c:
