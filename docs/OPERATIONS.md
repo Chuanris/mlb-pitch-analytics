@@ -15,6 +15,7 @@
 | Learn with a small dataset | `.\.venv\Scripts\python.exe run_pipeline.py --mode sample` | Replaces the snapshot with sample data; full-mode forecasts are omitted |
 | Inspect local health | `.\.venv\Scripts\python.exe -m src.health_check --max-age-days 2` | Read-only; checks data age, lineage and pipeline status |
 | Demonstrate observability states | `.\.venv\Scripts\python.exe -m src.observability_demo` | Uses only in-memory fixtures; does not read or write project data |
+| Reconcile an official MLB date | `.\.venv\Scripts\python.exe -m src.reconcile_mlb_source --date YYYY-MM-DD` | Read-only DuckDB access plus live official schedule/play-by-play requests |
 | Exercise PostgreSQL OLTP | `docker compose up -d postgres`, then `.\.venv\Scripts\python.exe -m src.oltp_store demo` | Writes local operational demo rows only; does not alter DuckDB or the dashboard |
 | Validate dbt transformations | In `warehouse/`, run `..\.venv\Scripts\dbt.exe build --profiles-dir . --target duckdb` | Writes only isolated `dbt_mlb_*` schemas and reconciles marts to legacy gold |
 | Review GCP changes | Manually dispatch **GCP BigQuery portfolio deployment** with `operation=plan` | Read-only cloud plan; requires configured OIDC environment variables |
@@ -75,6 +76,7 @@ The site is a self-contained static snapshot. A public deployment is not an auto
 | 使用小型教學資料 | `.\.venv\Scripts\python.exe run_pipeline.py --mode sample` | 替換為 Sample 快照，不包含完整模式預測 |
 | 檢查本機健康狀態 | `.\.venv\Scripts\python.exe -m src.health_check --max-age-days 2` | 唯讀檢查資料日期、血緣與流程狀態 |
 | 展示 observability 狀態 | `.\.venv\Scripts\python.exe -m src.observability_demo` | 僅使用記憶體 fixture，不讀寫專案資料 |
+| 對帳指定 MLB 官方日期 | `.\.venv\Scripts\python.exe -m src.reconcile_mlb_source --date YYYY-MM-DD` | 唯讀 DuckDB，加上官方 schedule／play-by-play 即時請求 |
 | 驗證 PostgreSQL OLTP | `docker compose up -d postgres`，再執行 `.\.venv\Scripts\python.exe -m src.oltp_store demo` | 只寫入本機操作型 demo 資料，不修改 DuckDB 或儀表板 |
 | 驗證 dbt 轉換 | 在 `warehouse/` 執行 `..\.venv\Scripts\dbt.exe build --profiles-dir . --target duckdb` | 只寫入隔離的 `dbt_mlb_*` schemas，並將 marts 對照既有 gold |
 | 檢查 GCP 變更 | 手動執行 **GCP BigQuery portfolio deployment** 並設定 `operation=plan` | 唯讀雲端 plan；需先設定 OIDC environment variables |

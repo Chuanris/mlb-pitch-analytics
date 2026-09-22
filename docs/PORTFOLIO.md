@@ -28,9 +28,13 @@ Run `.\.venv\Scripts\python.exe -m src.observability_demo` for a credential-free
 
 The Data Platform CI workflow is configured to publish the same JSON as `observability-contract-evidence` for 30 days, but cite it as a public run artifact only after the updated workflow completes successfully on GitHub.
 
+The live [MLB source reconciliation](SOURCE_RECONCILIATION.md) separately compares official schedule and play-by-play responses with DuckDB. A dated run reconciled 15 games, 1,123 plate appearances and 4,380 pitch events for September 9, 2026. September 20 correctly failed with 15 official final games missing locally, so the repository does not claim current-range completeness.
+
 執行 `.\.venv\Scripts\python.exe -m src.observability_demo` 可使用不需憑證的 in-memory 展示。機器可讀輸出會驗證健康日期（`pass`）、未定狀態日期（`attention`），以及 completed game 缺少同日 coverage（`error`）。這能證明已實作的分支契約，但不能證明上游來源完整。
 
 Data Platform CI 已設定將同一份 JSON 以 `observability-contract-evidence` 保存 30 天；只有更新後的 workflow 在 GitHub 成功完成，才能把它引用為公開 run artifact。
+
+即時 [MLB 來源對帳](SOURCE_RECONCILIATION.md)會另外將官方 schedule／play-by-play response 與 DuckDB 比較。2026-09-09 的有日期 run 完成 15 場比賽、1,123 個 plate appearances 與 4,380 個 pitch events 的對帳；2026-09-20 則正確因本地缺少 15 場官方 Final games 而失敗，因此本專案不宣稱 current-range 已完整。
 
 Published CI baseline and current local verification:
 

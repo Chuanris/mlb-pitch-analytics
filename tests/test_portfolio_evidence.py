@@ -9,6 +9,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 AI_GUIDE = ROOT / "docs" / "AI_WORKFLOW.md"
 SQL_GUIDE = ROOT / "docs" / "SQL_PERFORMANCE.md"
+SOURCE_RECONCILIATION = ROOT / "docs" / "SOURCE_RECONCILIATION.md"
 PORTFOLIO = ROOT / "docs" / "PORTFOLIO.md"
 OPERATIONS = ROOT / "docs" / "OPERATIONS.md"
 README = ROOT / "README.md"
@@ -21,6 +22,7 @@ class PortfolioEvidenceContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.ai_guide = AI_GUIDE.read_text(encoding="utf-8")
         cls.sql_guide = SQL_GUIDE.read_text(encoding="utf-8")
+        cls.source_reconciliation = SOURCE_RECONCILIATION.read_text(encoding="utf-8")
         cls.portfolio = PORTFOLIO.read_text(encoding="utf-8")
         cls.operations = OPERATIONS.read_text(encoding="utf-8")
         cls.readme = README.read_text(encoding="utf-8")
@@ -102,6 +104,18 @@ class PortfolioEvidenceContractTests(unittest.TestCase):
             names.index("Validate the full pipeline plan"),
             names.index("Generate observability contract evidence"),
         )
+
+    def test_source_reconciliation_evidence_has_explicit_claim_boundaries(self):
+        self.assertIn("docs/SOURCE_RECONCILIATION.md", self.readme)
+        self.assertIn("[MLB source reconciliation](SOURCE_RECONCILIATION.md)", self.portfolio)
+        for evidence in (
+            "15 official final games = 15 local completed context games",
+            "1,123 official plate appearances = 1,123 local plate appearances",
+            "4,380 official pitch events = 4,380 local pitch rows",
+            "must **not** claim",
+            "not an independent audit of MLB",
+        ):
+            self.assertIn(evidence, self.source_reconciliation)
 
 
 if __name__ == "__main__":

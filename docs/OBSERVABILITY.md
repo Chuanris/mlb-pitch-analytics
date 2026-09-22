@@ -56,9 +56,9 @@ The evaluated date is reported as `latest_evaluated_date`. If it has no complete
 
 `latest_evaluated_date` 記錄受評估日期；當日無 completed games 時，`latest_completed_date`、每場平均與 coverage ratio 為 NULL。只有 active／unknown 的日期即使無 completed history 也回傳 attention。完全沒有 completed 或 unsettled 日期時，bootstrap 仍可能讓整體為 pass。同一天同時有 unsettled 與 missing coverage 時，可確定的 coverage error 優先。
 
-Nonzero but partially loaded games, uniformly truncated history, and games missing entirely from local context cannot be ruled out by pitch counts. An anomaly does not prove truncation or duplication. Completeness needs independent schedule/play-by-play evidence or source-to-target reconciliation. Global row-volume errors retain their existing severity and likewise do not establish a root cause.
+Nonzero but partially loaded games, uniformly truncated history, and games missing entirely from local context cannot be ruled out by pitch counts. An anomaly does not prove truncation or duplication. The separate [MLB source reconciler](SOURCE_RECONCILIATION.md) adds live schedule/play-by-play evidence at game and plate-appearance grain; its documented boundaries still apply. Global row-volume errors retain their existing severity and likewise do not establish a root cause.
 
-非零但部分載入的場次、歷史一致性截斷、以及本地 context 完全遺漏的比賽，均無法僅靠 pitch counts 排除。Anomaly 不等於已證明截斷或重複；完整性需要獨立賽程／play-by-play 證據或來源至目的端對帳。Global row-volume error 保留既有嚴重性，同樣不能單獨證明根因。
+非零但部分載入的場次、歷史一致性截斷、以及本地 context 完全遺漏的比賽，均無法僅靠 pitch counts 排除。獨立的 [MLB 來源對帳工具](SOURCE_RECONCILIATION.md)新增 game／plate-appearance grain 的即時 schedule／play-by-play 證據，但其文件中的限制仍然成立。Global row-volume error 保留既有嚴重性，同樣不能單獨證明根因。
 
 ## Run and inspect / 執行與查閱
 
@@ -84,9 +84,9 @@ Review alerts before rerunning: verify dates/extraction logs for freshness, reco
 
 ## Evidence and resume wording / 證據與履歷描述
 
-[Tests](../tests/test_observability.py) cover same-date coverage, deterministic-error precedence, baseline eligibility, insufficient history, mixed completed/unsettled dates, postponed games, duplicate terminal statuses, Los Angeles boundaries, low/high volume anomalies, normal volume, persistence and recovery. On 2026-09-20, the Python suite reported 144 tests: 141 passed and 3 PostgreSQL integration tests skipped because no integration database was configured. These are project-wide counts, not 144 observability-specific tests.
+[Tests](../tests/test_observability.py) cover same-date coverage, deterministic-error precedence, baseline eligibility, insufficient history, mixed completed/unsettled dates, postponed games, duplicate terminal statuses, Los Angeles boundaries, low/high volume anomalies, normal volume, persistence and recovery. On 2026-09-21, the Python suite reported 150 tests: 147 passed and 3 PostgreSQL integration tests skipped because no integration database was configured. These are project-wide counts, not 150 observability-specific tests.
 
-[測試](../tests/test_observability.py)涵蓋同日 coverage、deterministic error 優先序、基準資格、歷史不足、completed／unsettled 混合日期、延賽、terminal 狀態重複、洛杉磯日期邊界、高低投球量、正常投球量、持久化與恢復。2026-09-20 全專案 Python suite 共 144 項：141 通過，3 項因未設定 PostgreSQL integration database 跳過；不是 144 項 observability 專屬測試。
+[測試](../tests/test_observability.py)涵蓋同日 coverage、deterministic error 優先序、基準資格、歷史不足、completed／unsettled 混合日期、延賽、terminal 狀態重複、洛杉磯日期邊界、高低投球量、正常投球量、持久化與恢復。2026-09-21 全專案 Python suite 共 150 項：147 通過，3 項因未設定 PostgreSQL integration database 跳過；不是 150 項 observability 專屬測試。
 
 The 2026-09-20 real DuckDB smoke run read 1,355,356 pitch rows and passed 33 SQL checks. Recent partition passed (15/15 games covered; daily ratio 0.9961); overall status was attention because data through September 9 lagged the expected September 20 cutoff by 11 days. These are dated results, not a current freshness claim.
 

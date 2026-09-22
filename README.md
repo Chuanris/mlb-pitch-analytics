@@ -4,7 +4,7 @@
 
 [English](#english) · [繁體中文](#繁體中文)
 
-**[Live dashboard / 線上儀表板](https://chuanris.github.io/mlb-pitch-analytics/)** · [Portfolio evidence / 履歷證據](docs/PORTFOLIO.md) · [SQL performance / SQL 效能](docs/SQL_PERFORMANCE.md) · [AI workflow / AI 協作](docs/AI_WORKFLOW.md) · [Cloud platform / 雲端平台](docs/CLOUD.md) · [Airflow orchestration / 工作流程編排](docs/AIRFLOW.md) · [Deployment / 部署狀態](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/deploy-pages.yml) · [Operations / 維護指南](docs/OPERATIONS.md)
+**[Live dashboard / 線上儀表板](https://chuanris.github.io/mlb-pitch-analytics/)** · [Portfolio evidence / 履歷證據](docs/PORTFOLIO.md) · [Source reconciliation / 來源對帳](docs/SOURCE_RECONCILIATION.md) · [SQL performance / SQL 效能](docs/SQL_PERFORMANCE.md) · [AI workflow / AI 協作](docs/AI_WORKFLOW.md) · [Cloud platform / 雲端平台](docs/CLOUD.md) · [Airflow orchestration / 工作流程編排](docs/AIRFLOW.md) · [Deployment / 部署狀態](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/deploy-pages.yml) · [Operations / 維護指南](docs/OPERATIONS.md)
 
 > A reproducible MLB Statcast analytics portfolio: Python + PostgreSQL + DuckDB/dbt + deployable GCS/BigQuery infrastructure + scikit-learn + React.
 >
@@ -23,6 +23,7 @@ It is **not** a game-winner prediction system, betting model, or guaranteed fant
 ### Highlights
 
 - Persistent [data observability](docs/OBSERVABILITY.md): freshness gates, schema/volume baselines, SQL-quality history and fault-tested recovery through the existing Airflow quality task
+- Live [MLB source reconciliation](docs/SOURCE_RECONCILIATION.md) at game and plate-appearance grain with hashed schedule/play-by-play evidence and explicit current-range failure reporting
 
 - Restartable Statcast extraction through `pybaseball`
 - MLB schedule, venue, roof, and recorded-weather context
@@ -295,6 +296,7 @@ Primary sources:
 ### 專案亮點
 
 - 持久化[資料可觀測性](docs/OBSERVABILITY.md)：freshness 閘門、schema／筆數基準、SQL 品質歷史，以及透過既有 Airflow quality task 驗證的故障恢復
+- 即時 [MLB 來源對帳](docs/SOURCE_RECONCILIATION.md)：以 game／plate-appearance grain 比對並保存 schedule／play-by-play hashes，且明確回報 current-range failure
 
 - 透過 `pybaseball` 取得可中斷續跑的 Statcast 資料
 - 整合 MLB 賽程、球場、屋頂狀態與紀錄天氣
@@ -559,14 +561,14 @@ warehouse/             雙 target dbt models、tests、seed、profiles 與 CI fi
 ## Reliability / 資料與產物可靠性
 
 - Missing exit velocity remains an unknown hard-hit label, excluded from model targets and rate denominators. Total and measured counts remain separate; `outputs/measurement_coverage.csv` reports coverage by season.
-- Quality gates compare completed regular-season games in the cached MLB schedule against Statcast. They detect missing Statcast games, but cannot detect games absent from both sources.
+- Local quality gates compare completed regular-season games in the cached MLB schedule against Statcast. The separate live [source reconciler](docs/SOURCE_RECONCILIATION.md) re-fetches official schedule/play-by-play evidence and can detect games absent from both local tables; it still cannot independently audit MLB itself.
 - `model_evaluation` in `config/pipeline_config.json` fixes training through 2025-09-28, validation from 2026-03-25, and testing from 2026-06-13 through 2026-09-03. Adding dates cannot change benchmark membership. Changing boundaries starts a new benchmark and requires regeneration.
 - Each rebuild commits `metadata.dataset_version`. Model, scoring, Fantasy and snapshot CLI stages write SHA-256 receipts to `outputs/lineage/`; downstream stages reject missing, stale, altered or superseded dependencies. These local receipts are not an immutable historical archive or production model registry.
 - Sample snapshots omit full-mode model/Fantasy artifacts. Optional `paths.dashboard_snapshot` redirects the snapshot for isolated validation.
 - Snapshot replacement is atomic. Other outputs are not one atomic release bundle; a failed stage invalidates its receipt and blocks downstream snapshot generation.
 
 - 強擊球初速缺失保留為未知，不納入模型標籤與比率分母；全部擊球數與有效測量數分開保存，`outputs/measurement_coverage.csv` 列出各球季覆蓋率。
-- 品質閘門將快取賽程中已完成的例行賽與 Statcast 比對，可找出缺少逐球資料的比賽，但無法發現兩個來源都沒有的比賽。
+- 本地品質閘門將快取賽程中的已完成例行賽與 Statcast 比對；獨立的即時[來源對帳](docs/SOURCE_RECONCILIATION.md)會重新抓取官方 schedule／play-by-play，因此可發現兩個本地表都缺少的比賽，但仍不能獨立稽核 MLB 自身。
 - 設定中的 `model_evaluation` 固定訓練截止日為 2025-09-28、驗證開始日為 2026-03-25、測試期為 2026-06-13 至 2026-09-03；新增日期不會改變基準成員，修改邊界則須重建新基準。
 - 每次重建保存 `metadata.dataset_version`，模型、評分、Fantasy 與快照產生 SHA-256 血緣收據；下游拒絕缺失、過期、遭修改或已被取代的相依產物。這些本機收據不是不可竄改的歷史封存或正式模型登錄服務。
 - Sample 模式不會夾帶舊的完整球季模型結果；可用 `paths.dashboard_snapshot` 將隔離驗證的快照寫至其他位置。
