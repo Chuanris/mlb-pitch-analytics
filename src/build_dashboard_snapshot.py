@@ -49,8 +49,7 @@ SELECT
     pitcher_team,
     pitcher_throws,
     batter_stand,
-    pitch_type,
-    pitch_name,
+    COALESCE(pitch_name, pitch_type, 'Unknown') AS pitch_name,
     pitch_family,
     count_state,
     COUNT(*)::BIGINT AS pitch_count,
@@ -62,7 +61,7 @@ SELECT
     COUNT(*) FILTER (WHERE batted_ball_flag = 1 AND hard_hit_flag IS NOT NULL) AS measured_batted_ball_count,
     SUM(hard_hit_flag)::BIGINT AS hard_hit_count,
     ROUND(SUM(release_speed), 2) AS velocity_total,
-    COUNT(release_speed)::BIGINT AS velocity_count,
+    COUNT(*) FILTER (WHERE release_speed IS NULL)::BIGINT AS missing_velocity_count,
     STRFTIME(MIN(game_date), '%Y-%m-%d') AS first_game_date,
     STRFTIME(MAX(game_date), '%Y-%m-%d') AS last_game_date
 FROM silver.fact_pitch
@@ -128,7 +127,7 @@ def summary_metric_definitions() -> list[dict]:
         {
             "label": "Average velocity",
             "definition": "Pitch-count-weighted mean Statcast release speed in miles per hour.",
-            "formula": "SUM(velocity_total) / SUM(velocity_count)",
+            "formula": "SUM(velocity_total) / SUM(pitch_count - COALESCE(missing_velocity_count, 0))",
             "componentIds": ["velocity-whiff-profile", "pitcher-table"],
             "sourceLineage": source,
         },
@@ -153,6 +152,18 @@ def reviewed_rows(connection: duckdb.DuckDBPyConnection, sql: str) -> list[dict]
     frame = connection.execute(sql).fetchdf()
     frame = frame.astype(object).where(frame.notna(), None)
     return frame.to_dict(orient="records")
+
+
+def compact_pitch_summary_rows(rows: list[dict]) -> list[dict]:
+    """Keep the common velocity denominator implicit and retain only real gaps."""
+    compacted = []
+    for source_row in rows:
+        row = dict(source_row)
+        missing_velocity_count = int(row.pop("missing_velocity_count", 0) or 0)
+        if missing_velocity_count:
+            row["missing_velocity_count"] = missing_velocity_count
+        compacted.append(row)
+    return compacted
 
 
 def load_json(path: Path) -> dict:
@@ -394,7 +405,7 @@ def hitter_queries(outputs_dir: Path, mode: str) -> dict:
 def build_snapshot(database_path: Path, outputs_dir: Path) -> dict:
     connection = duckdb.connect(str(database_path), read_only=True)
     try:
-        summary_rows = reviewed_rows(connection, PITCH_SUMMARY_SQL)
+        summary_rows = compact_pitch_summary_rows(reviewed_rows(connection, PITCH_SUMMARY_SQL))
         location_rows = reviewed_rows(connection, LOCATION_DENSITY_SQL)
         mode, start_season, end_season, configured_start, configured_end = connection.execute(
             "SELECT mode, start_season, end_season, start_date, end_date FROM metadata.pipeline_config"

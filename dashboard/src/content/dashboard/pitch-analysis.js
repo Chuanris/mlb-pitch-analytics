@@ -1,6 +1,10 @@
 // Pure aggregation over reviewed rows; no language or player-pool state.
 function sum(rows, field) { return rows.reduce((total, row) => total + (Number(row[field]) || 0), 0); }
 function safeRate(numerator, denominator) { return denominator > 0 ? numerator / denominator : null; }
+function velocitySampleCount(row) {
+  if (row.velocity_count != null) return Number(row.velocity_count) || 0;
+  return Math.max(0, (Number(row.pitch_count) || 0) - (Number(row.missing_velocity_count) || 0));
+}
 
 function aggregatePitchUsage(rows) {
   const groups = new Map();
@@ -128,7 +132,7 @@ function aggregateVelocityWhiff(rows) {
     };
     current.pitch_count += Number(row.pitch_count) || 0;
     current.velocity_total += Number(row.velocity_total) || 0;
-    current.velocity_count += Number(row.velocity_count) || 0;
+    current.velocity_count += velocitySampleCount(row);
     current.swings += Number(row.swing_count) || 0;
     current.whiffs += Number(row.whiff_count) || 0;
     groups.set(pitchName, current);
@@ -164,7 +168,7 @@ function aggregatePitchers(rows, minimumPitches) {
     };
     current.pitch_count += Number(row.pitch_count) || 0;
     current.velocity_total += Number(row.velocity_total) || 0;
-    current.velocity_count += Number(row.velocity_count) || 0;
+    current.velocity_count += velocitySampleCount(row);
     current.in_zone += Number(row.in_zone_count) || 0;
     current.swings += Number(row.swing_count) || 0;
     current.whiffs += Number(row.whiff_count) || 0;

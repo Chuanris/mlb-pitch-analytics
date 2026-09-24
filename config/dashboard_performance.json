@@ -1,0 +1,7 @@
+{
+  "snapshot_max_bytes": 44000000,
+  "built_html_max_bytes": 47200000,
+  "built_html_gzip_max_bytes": 3750000,
+  "pitch_summary_max_bytes": 33000000,
+  "pitch_summary_max_rows": 75000
+}

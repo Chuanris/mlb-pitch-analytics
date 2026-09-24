@@ -41,3 +41,11 @@ test('empty data and zero measured contacts remain unknown',()=>{
   const result = pitchLabAnalysis([{...rows[0],measured_batted_ball_count:0,hard_hit_count:0}],[]);
   assert.equal(result.outcomeRows[0].hard_hit_rate,null);
 });
+test('sparse missing-velocity counts preserve the measured velocity denominator',()=>{
+  const dense = [{...rows[0],pitch_count:10,velocity_total:855,velocity_count:9}];
+  const {velocity_count: _removed, ...sparseBase} = dense[0];
+  const sparse = [{...sparseBase,missing_velocity_count:1}];
+  assert.equal(pitchLabAnalysis(dense,[]).pitcherRows[0].avg_velocity,95);
+  assert.equal(pitchLabAnalysis(sparse,[]).pitcherRows[0].avg_velocity,95);
+  assert.equal(pitchLabAnalysis(sparse,[]).velocityWhiffRows[0].avg_velocity,95);
+});

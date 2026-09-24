@@ -6,6 +6,8 @@ on:
     paths:
       - "dashboard/**"
       - "scripts/check_compare.mjs"
+      - "scripts/check_dashboard_payload.mjs"
+      - "config/dashboard_performance.json"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
@@ -40,8 +42,16 @@ jobs:
         working-directory: dashboard
         run: npm run build
 
-      - name: Test MLB analysis helpers
-        run: node --test dashboard/tests/mlb-pitch-analysis.test.mjs dashboard/tests/mlb-hitter-analysis.test.mjs
+      - name: Enforce dashboard payload budgets
+        run: node scripts/check_dashboard_payload.mjs
+
+      - name: Test MLB dashboard contracts
+        run: >-
+          node --test
+          dashboard/tests/mlb-pitch-analysis.test.mjs
+          dashboard/tests/mlb-hitter-analysis.test.mjs
+          dashboard/tests/dashboard-payload-budget.test.mjs
+          dashboard/tests/snapshot-integrity.test.mjs
 
       - name: Check Compare and hitter decisions in desktop and mobile Chrome
         timeout-minutes: 5
