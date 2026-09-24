@@ -1,0 +1,730 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-09-24T02:50:29.174437+00:00",
+  "status": "error",
+  "assessment": "audit_has_errors",
+  "scope": {
+    "start_date": "2026-09-09",
+    "end_date": "2026-09-20",
+    "game_type": "regular_season",
+    "date_semantics": "MLB officialDate"
+  },
+  "local_snapshot": {
+    "bronze.raw_statcast": {
+      "min_game_date": "2025-03-18",
+      "max_game_date": "2026-09-22",
+      "rows": 1408305
+    },
+    "silver.fact_pitch": {
+      "min_game_date": "2025-03-18",
+      "max_game_date": "2026-09-22",
+      "rows": 1403065
+    }
+  },
+  "claim": {
+    "establishes": "For each listed date, the manifest records whether local game coverage and per-plate-appearance pitch counts agreed with the official MLB schedule and live feeds at check time.",
+    "limits": "Count agreement does not prove event-level semantic equivalence, season-wide completeness, upstream correctness or immutability, or an independent audit of MLB."
+  },
+  "method": {
+    "official": "Regular-season Final games from the MLB schedule, then isPitch=true events grouped by game_pk and at_bat_number from each live feed.",
+    "raw_pitch_proxy": "Regular-season bronze.raw_statcast rows with a non-null description other than automatic_ball or automatic_strike; this operational proxy has no independent cross-source event identifier.",
+    "silver": "silver.fact_pitch rows compared with official feeds by game_pk, game_date and at_bat_number."
+  },
+  "summary": {
+    "dates_checked": 12,
+    "status_counts": {
+      "pass": 7,
+      "attention": 0,
+      "error": 5
+    },
+    "official_final_games": 159,
+    "official_plate_appearances": 12110,
+    "official_pitch_plate_appearances": 12087,
+    "official_pitch_events": 46843,
+    "raw_pitch_proxy_rows": 46843,
+    "silver_pitch_rows": 46821,
+    "raw_minus_official_pitch_events": 0,
+    "silver_minus_official_pitch_events": -22,
+    "raw_matching_dates": 12,
+    "raw_mismatch_dates": 0,
+    "source_reconciled_dates": 7
+  },
+  "dates": [
+    {
+      "official_date": "2026-09-09",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "pass",
+      "assessment": "source_reconciled",
+      "source_reconciliation": {
+        "status": "pass",
+        "assessment": "source_reconciled"
+      },
+      "metrics": {
+        "official_final_games": 15,
+        "local_completed_context_games": 15,
+        "local_pitch_games": 15,
+        "play_by_play_games_checked": 15,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 1124,
+        "official_pitch_plate_appearances": 1123,
+        "local_pitch_plate_appearances": 1123,
+        "official_pitch_events": 4380,
+        "local_pitch_rows": 4380
+      },
+      "local_layers": {
+        "raw_games": 15,
+        "raw_regular_season_rows": 4382,
+        "raw_pitch_proxy_rows": 4380,
+        "raw_null_pitch_type_rows": 2,
+        "silver_pitch_games": 15,
+        "silver_pitch_rows": 4380
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {},
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-09&endDate=2026-09-09",
+        "schedule_sha256": "d8791ec394ec358f988c11b69f3d59748c7863606147bdb394eb3d0677378315",
+        "game_feed_sha256": {
+          "823090": "a7a91f110f855f5144fe27a1dcfb7f616082170fa033f596c48bebe32b523a39",
+          "823172": "ad55beb9f31ba642efcb4836bf413657cc7acff587dfa57461d32bad2640f9d4",
+          "823251": "2ab4eded2e5772d28dd69e906550fced064362053a0f89253229cfb42802ab4f",
+          "823416": "6f6041d6abe5b7412bb3069c43f743ca1e026a952c47dd98f43591eb3513d227",
+          "823497": "6db287716b370bf2481e82640553355f8b33c53baa9efadeb9745bc8faa25eed",
+          "823739": "72a0f490921c248ae11c1c4c8277711e95861ab2d8ada63f8fc64ff167ab2249",
+          "823818": "bca2a37c3a50d88d3f35abf0522068e742a41c18bbc3a2dad588792999e21b16",
+          "823900": "f772a6f725d846d725bb8eed87c1752eeb62680cec207e4c30aa25b758f62268",
+          "824064": "4a36f6ad53bba40e8fdd0d6a9da6ca9f2cc71927cc0f756fd07e993b8184a4d9",
+          "824226": "d800893290eb385de680c35a4f1ae30b3f15674df3e7b980596ecd40e9848687",
+          "824549": "44d3747c98ab37465bbd81c755dd068160fd14469863f000e99afa1655db8ebe",
+          "824713": "61aa786ad4f90161ce550946158fd1816caa19c9dc97ceefc37db8508de18a37",
+          "824791": "c22e331f97ebcec21c1543448a6f856dee183c3e784d98809d6ea40733b350c1",
+          "824871": "c0c9bedfc5d860de3b64366daff2c394f9d1aafeee12dde63f31343738651483",
+          "824956": "04f02f982ca63f1a4c80f201143114474ecdeff11aca5ddf53c376c9696ee4ee"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-10",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "pass",
+      "assessment": "source_reconciled",
+      "source_reconciliation": {
+        "status": "pass",
+        "assessment": "source_reconciled"
+      },
+      "metrics": {
+        "official_final_games": 5,
+        "local_completed_context_games": 5,
+        "local_pitch_games": 5,
+        "play_by_play_games_checked": 5,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 340,
+        "official_pitch_plate_appearances": 339,
+        "local_pitch_plate_appearances": 339,
+        "official_pitch_events": 1335,
+        "local_pitch_rows": 1335
+      },
+      "local_layers": {
+        "raw_games": 5,
+        "raw_regular_season_rows": 1342,
+        "raw_pitch_proxy_rows": 1335,
+        "raw_null_pitch_type_rows": 7,
+        "silver_pitch_games": 5,
+        "silver_pitch_rows": 1335
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {},
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-10&endDate=2026-09-10",
+        "schedule_sha256": "4eacf2ae07da8cc82fe7d38d62438835047be65b0f0c911be665273e8065c092",
+        "game_feed_sha256": {
+          "823088": "c1fc33adbd6381e0541eecef24f40d8daa70bd3d4132f4c650fd52c09842ead7",
+          "823413": "8e91c101b80330bc0a8389b3922323cf8cd8f44c141243bb34439a3f9c6d6224",
+          "823499": "dd8efe00ba930e205a495198ed4f6136969f298d195ba1be8cfe2ecbf423ef96",
+          "824550": "0696d238bfa9ed167278d260a0b1e6d107ac5c8c2f9cf9c4d80846c2c3b25906",
+          "824872": "9a46d764a53a0bed6dd0cd50897a09def8d9852bc7fb6ef2a9540475c2690b4f"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-11",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "error",
+      "assessment": "source_mismatch",
+      "source_reconciliation": {
+        "status": "error",
+        "assessment": "source_mismatch"
+      },
+      "metrics": {
+        "official_final_games": 15,
+        "local_completed_context_games": 15,
+        "local_pitch_games": 15,
+        "play_by_play_games_checked": 15,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 1164,
+        "official_pitch_plate_appearances": 1160,
+        "local_pitch_plate_appearances": 1160,
+        "official_pitch_events": 4416,
+        "local_pitch_rows": 4414
+      },
+      "local_layers": {
+        "raw_games": 15,
+        "raw_regular_season_rows": 4433,
+        "raw_pitch_proxy_rows": 4416,
+        "raw_null_pitch_type_rows": 19,
+        "silver_pitch_games": 15,
+        "silver_pitch_rows": 4414
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {
+        "plate_appearance_pitch_counts": [
+          {
+            "game_pk": 823736,
+            "at_bat_number": 68,
+            "official": 5,
+            "local": 4
+          },
+          {
+            "game_pk": 823736,
+            "at_bat_number": 78,
+            "official": 3,
+            "local": 2
+          }
+        ]
+      },
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-11&endDate=2026-09-11",
+        "schedule_sha256": "9e61bef0b17d29f77a27f8922f937a50d504321da53dfe046ca164de76c270e4",
+        "game_feed_sha256": {
+          "822684": "8dda9a34bb9683a9c972ed131d80d920f303afaec26f1798819fb089152d268d",
+          "822767": "0eeadf7611abd59835a8a508db2eb3c3e02608d8eb2ba6e0c42d6ca31d19a909",
+          "822930": "964605a23c5215834f44f70906361b482c466055994c95aa9d24368ab43f822e",
+          "823012": "1507cf259c8c6983bc9e408e0505e502ed5e08b6287dbf0d0e597bf0b9a91c90",
+          "823173": "337675b92a585dad25cd102bd453384ff9d73ddc2c96b8c01768f6bbe2d81219",
+          "823498": "b0942fc23f0fcd239ff474320f6ff7273704e9e7d8fdd7d4a61bc4a260c48118",
+          "823659": "213a86c61c3b54e18370cdab38677bd88ded3fff282d014baa59152b9469fdbc",
+          "823736": "5d0b30e3b3a4834611c2521d9cda86be15e9609913a849ea8d63c20633857c9b",
+          "823817": "c0cc787b0ce77f3453882de081d801149d4ef49650bc7da198e2b173d8c60cdc",
+          "824227": "12e5e364fa211a868bb4bcc6dd25d615df741643ee836ad55cce3b6e993f65d3",
+          "824631": "a2d0caf76e8cdd5faa20df6399df05b25badb762b3e149e498d00ca179ab57b0",
+          "824711": "4e0e9a7a94c3e5b09c78e903dcb01be861fa8991e983918e63955ef420259f8b",
+          "824873": "c54a54a9400680ad3b64fcc1de53dcaeab06e5a0ae557475a934e816d1057a31",
+          "824954": "be4c4e25806c2ab0a29ab7937eee5a3c5eec26edb8faa67d43faeab86273ee1c",
+          "825036": "5108c6324e46a3e3c778dda02ed82655ff9b968d28ea776c03da325800606687"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-12",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "pass",
+      "assessment": "source_reconciled",
+      "source_reconciliation": {
+        "status": "pass",
+        "assessment": "source_reconciled"
+      },
+      "metrics": {
+        "official_final_games": 15,
+        "local_completed_context_games": 15,
+        "local_pitch_games": 15,
+        "play_by_play_games_checked": 15,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 1176,
+        "official_pitch_plate_appearances": 1173,
+        "local_pitch_plate_appearances": 1173,
+        "official_pitch_events": 4410,
+        "local_pitch_rows": 4410
+      },
+      "local_layers": {
+        "raw_games": 15,
+        "raw_regular_season_rows": 4432,
+        "raw_pitch_proxy_rows": 4410,
+        "raw_null_pitch_type_rows": 22,
+        "silver_pitch_games": 15,
+        "silver_pitch_rows": 4410
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {},
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-12&endDate=2026-09-12",
+        "schedule_sha256": "b2129ec106cd5c3c0092fc518bdabc1155286d8aa1ee58c12cfec95b131801b5",
+        "game_feed_sha256": {
+          "822685": "7693f6134bab8afc3a393529d90c22635793a435380430644ae1ad3b3e3a1d63",
+          "822768": "6a651e05c3f4da4a8b16ab823fcb2e76c764ca8698cce33a2b5260b9f949c1b7",
+          "822927": "792c4dfa6464e9844c864a4eaf577c0764c3ade9af083b228f33295e9ccc7cb5",
+          "823009": "ebcf533524707ddc72794b54463c72e4ef0b58c3f8c5a929916f69287fdb0009",
+          "823170": "610d8dcd3b731470f5a9b17084e003d471864604baa56a40fd1bdc69af91dec5",
+          "823496": "dab66215707007da26aeca517f6666d1057d73117c3eb45e0beebdf1a56818fb",
+          "823657": "d84a5c7e125e764c7046ce10761479ad66d3ca61d40e0185bea68993f3e76bda",
+          "823737": "07d7aa22aa18f26a77fb0a63dab7873209da34553d1a76ae3ce69ac5b9f4fc5c",
+          "823819": "26479daf1053dadc997575765a33b7e6734c29dfda59392f5e202f7ef96ab35d",
+          "824224": "bad6fd13706766942d7bbb87d22b85428dc206c83d680bd02be829d0d37e4a64",
+          "824630": "515c6c52a968855fec71dd710f92d99558ed1c50fc57ddd05cbdce1257653e3c",
+          "824712": "7025517fef6445a39f52061feec829eb785dc0bb179671b48459a2ee71365a7c",
+          "824870": "422c81b2cd82fda147c5e3d3e510f0767b105eff9a160e988f51a7d513b6aa34",
+          "824955": "cbebd8f904e4ac3b50ee935fc815f9934d2089a94b5172565ccf82add091d66c",
+          "825035": "e88af92991131db90cffff64f988b21b022bd57fa9c8f7e050a88b7e765db11e"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-13",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "error",
+      "assessment": "source_mismatch",
+      "source_reconciliation": {
+        "status": "error",
+        "assessment": "source_mismatch"
+      },
+      "metrics": {
+        "official_final_games": 15,
+        "local_completed_context_games": 15,
+        "local_pitch_games": 15,
+        "play_by_play_games_checked": 15,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 1133,
+        "official_pitch_plate_appearances": 1132,
+        "local_pitch_plate_appearances": 1130,
+        "official_pitch_events": 4419,
+        "local_pitch_rows": 4402
+      },
+      "local_layers": {
+        "raw_games": 15,
+        "raw_regular_season_rows": 4426,
+        "raw_pitch_proxy_rows": 4419,
+        "raw_null_pitch_type_rows": 24,
+        "silver_pitch_games": 15,
+        "silver_pitch_rows": 4402
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {
+        "missing_plate_appearances": [
+          {
+            "game_pk": 824952,
+            "at_bat_number": 22
+          },
+          {
+            "game_pk": 824952,
+            "at_bat_number": 23
+          }
+        ],
+        "plate_appearance_pitch_counts": [
+          {
+            "game_pk": 824952,
+            "at_bat_number": 21,
+            "official": 3,
+            "local": 1
+          }
+        ]
+      },
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-13&endDate=2026-09-13",
+        "schedule_sha256": "19546c353227a39bff87a3eed75088d33e7c6f7367453e02c173b1441dc0179f",
+        "game_feed_sha256": {
+          "822682": "d509abb34c5599e354dd69e91da815241e3b18942a7d12af2fdbfd4d8128c3aa",
+          "822764": "f0344a7ec1cd9c7192c72d67d73e0513bad562def55eb4226aa187a5f003d985",
+          "822928": "d031a19d438bc436c5ea4e378905d12e4fbf6b1a5ad6c9e1717cfccda3a31333",
+          "823008": "34dbf039a79747f34286d4fd9ad7b0c8f5e96fad6a581fc373df256675844421",
+          "823171": "5eb051b52e983220cfc16beae8db4604f3aaa89fc09ae7e30506f8a306ae7fce",
+          "823495": "cd1bb846bb66ff2d627e2569a4894dda81bc404d997eb74358cece0ef7ebf8b5",
+          "823658": "728e5fb768f5d0ec546aec3aee9494c4d36d6bebb0f77c7160e257da9454e10f",
+          "823734": "52f964342d374e1268d519dca38a3708cf391998fe85f90da0badfcc421c4788",
+          "823815": "0dbcbc00eba9e5601914b19f0687c1f3882cc976b9af17308efd2d228701729f",
+          "824225": "25e54d5393b6e82f50c17f5b06a0e41c7a25d6e8ceb20dc71912d3c70efea395",
+          "824628": "a388d79c3f3099a16dbbed681c3e8c89d289fd16feaf3439d515be31dde2c419",
+          "824708": "738af3eaff7d4340fbe78c77b436c5b1c0c976ec02ecd000e8fb2d66d1abb559",
+          "824869": "b8da3bcc19c0245a03260fcc1d54247c9c1cb29e5ee3388bca89b0968c387b64",
+          "824952": "fe20c4cdd0870cc88b957d1bc85ada0a686d0fcf42030627a235db037dfb89bf",
+          "825033": "7cd132b15fa9b386c0a96b467658114f0fa0a14c59af47054ce0a1b698616baf"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-14",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "pass",
+      "assessment": "source_reconciled",
+      "source_reconciliation": {
+        "status": "pass",
+        "assessment": "source_reconciled"
+      },
+      "metrics": {
+        "official_final_games": 10,
+        "local_completed_context_games": 10,
+        "local_pitch_games": 10,
+        "play_by_play_games_checked": 10,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 757,
+        "official_pitch_plate_appearances": 757,
+        "local_pitch_plate_appearances": 757,
+        "official_pitch_events": 3026,
+        "local_pitch_rows": 3026
+      },
+      "local_layers": {
+        "raw_games": 10,
+        "raw_regular_season_rows": 3026,
+        "raw_pitch_proxy_rows": 3026,
+        "raw_null_pitch_type_rows": 0,
+        "silver_pitch_games": 10,
+        "silver_pitch_rows": 3026
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {},
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-14&endDate=2026-09-14",
+        "schedule_sha256": "bccd97b1c5e5cbdb681b6e4e458c8b2dd5d9e2dc8a8c3fe8e25115ef5ed3377e",
+        "game_feed_sha256": {
+          "822765": "aeeb86f435d4a4c2ce6cfa470124d5202570c6491be06f8575eeba05ea713ccd",
+          "823006": "4ed1618ab91fd8f317bf2696f810f80f27a3949e7a50ae5191f0b6ef231aa69e",
+          "823575": "1aecdf376ddfdac336fc7b58cac81101bd901bd4b25e142613df611958394cfb",
+          "823656": "5b9f78f05dde773ad2202d3cc58029e60d7cebc357fbc223bee875a3adb877d2",
+          "823981": "d9062c820a21c87e4b91c4d1009f8b9f7d72c4c223ef3a3bc631918931a404cf",
+          "824308": "9e9f681123ad60b036ae8629b7fa0202eb48e36be280f7111f7d1edf705f2b73",
+          "824386": "e29af0c48c0299b6af3e6fc1359a36868967641fd6c9953397e2f9f2417575ed",
+          "824465": "4ba689466d2fef7d1a188c5ba7c905d407ae1cf9ee5f5024663c79b9572e2624",
+          "824629": "09036e4e47fd2320531011d4e0317c75dbb0f9030748cd62fc547311dbc7c249",
+          "825034": "daaa9051629429a6da23cd21368467b0cdce5701a10006bb18e237cda1fb4727"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-15",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "error",
+      "assessment": "source_mismatch",
+      "source_reconciliation": {
+        "status": "error",
+        "assessment": "source_mismatch"
+      },
+      "metrics": {
+        "official_final_games": 15,
+        "local_completed_context_games": 15,
+        "local_pitch_games": 15,
+        "play_by_play_games_checked": 15,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 1134,
+        "official_pitch_plate_appearances": 1130,
+        "local_pitch_plate_appearances": 1130,
+        "official_pitch_events": 4408,
+        "local_pitch_rows": 4407
+      },
+      "local_layers": {
+        "raw_games": 15,
+        "raw_regular_season_rows": 4427,
+        "raw_pitch_proxy_rows": 4408,
+        "raw_null_pitch_type_rows": 20,
+        "silver_pitch_games": 15,
+        "silver_pitch_rows": 4407
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {
+        "plate_appearance_pitch_counts": [
+          {
+            "game_pk": 823574,
+            "at_bat_number": 83,
+            "official": 4,
+            "local": 3
+          }
+        ]
+      },
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-15&endDate=2026-09-15",
+        "schedule_sha256": "3c01c108c00f026e29b32917fcfdc5044eea46c6c1de300955047447d0e1d0e7",
+        "game_feed_sha256": {
+          "822683": "1e5144c9d7f5dd6bb6429ff378100a3ae31389bb4628f053df753f4f2a64e98b",
+          "822762": "909f873f0d0eb55f53546bb43a63432f6e7f005070249d2651027fc0166c1ea2",
+          "822849": "4aa56229e3e711a2782cd9027f96313f091c6c96ced7baeeaf44f774c52ce444",
+          "822925": "04865b0ec3604aa1357f7cee67e2181354b6ebeb0fd05ad246297614b425efe4",
+          "823007": "fa2de016f5388f24b3985babece291820f3efd8e5a47e1fccfbfff5191e79780",
+          "823333": "3dd098c01d68a463471524422fc93ffb514a2146d0c01752f64641a8898823d7",
+          "823574": "31c9ac874a6cdb060a2b6e407209e91fffb94cf66f1f8ef4905be702e598b79c",
+          "823654": "ef0a416e528cd5c3c96b8c0f9ca8f62a5db975dd7307ac05500d85e855662a77",
+          "823980": "e9aba5185a9981def1437902dca536460ebef9b312453f05cf23e2316c5c4fef",
+          "824143": "036b9938780031d9e698a4e03ed3cbc972f9af8a596f560b84e94b8fced11ef9",
+          "824307": "5f4aa9c88cd4543f82c01e712ad7f9b249576686ab483fc292dc27c7ac63be7d",
+          "824384": "6134e7a6c17502dc30bdaf0ffb34be410360eb070ea43a17acdbc27044cee8b8",
+          "824466": "518de7677dd7b562ee90d8402143f518e6d88963996c6bfc2f7198887ef4bbef",
+          "824627": "002236652c12db50bf50ef0dd7ce5d6c9e9d58b8896aeb2f6b6dc63bfe82f892",
+          "825030": "dcfe396084ba2fd1dd06e8315956490f5dd24509ca670ac2e3160430d49f4517"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-16",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "pass",
+      "assessment": "source_reconciled",
+      "source_reconciliation": {
+        "status": "pass",
+        "assessment": "source_reconciled"
+      },
+      "metrics": {
+        "official_final_games": 15,
+        "local_completed_context_games": 15,
+        "local_pitch_games": 15,
+        "play_by_play_games_checked": 15,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 1177,
+        "official_pitch_plate_appearances": 1174,
+        "local_pitch_plate_appearances": 1174,
+        "official_pitch_events": 4486,
+        "local_pitch_rows": 4486
+      },
+      "local_layers": {
+        "raw_games": 15,
+        "raw_regular_season_rows": 4501,
+        "raw_pitch_proxy_rows": 4486,
+        "raw_null_pitch_type_rows": 15,
+        "silver_pitch_games": 15,
+        "silver_pitch_rows": 4486
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {},
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-16&endDate=2026-09-16",
+        "schedule_sha256": "871de845ac1433269eec15359943683e876b2bb148d09fb76b2e3dd41a84d4d4",
+        "game_feed_sha256": {
+          "822680": "1939fba7571bed386151395c5a61a388ff8a1f97cf491a611cdece3f47ce4327",
+          "822763": "fad72058c06062dcee0078b4a37b10f2905bb4b48525d7cdf4a447092dcb8c06",
+          "822846": "7c754c3e88600940b01a2f7b8a9b2b4447b202116adfe6a30ebfe2fd27e07019",
+          "822926": "62aff73b1e93e7c1c1be19b512fb8d0264b28fd7bcc7ec7672aefc3268227e80",
+          "823004": "8010db920df3d9cc5fde4f7407c325183a1d094a7d51540505ed725c2113816c",
+          "823332": "72bd105244541cf7a7e8dd6c6eb0c013af3e88416a30c9a83608fa96b8950dc4",
+          "823576": "d08f2a3e66109f5ffbe85aabb838e62e59012767607866ecbaff09aa35bfc1e3",
+          "823655": "02c87e90e3a9bc3bc8993c8b1b3669ca761e5b00b19c57456fd251cb17b42a21",
+          "823979": "39a4d37e8053b0a1ca646aeda1b32bf04b0424d9af83f6e4a0287474157137a8",
+          "824140": "72ea76500f7b4e2c17dc08ae59c1273521ea70ad7fd4dcc6d05761b6cbf0b06d",
+          "824306": "d0f6cf24bb40c24a6f9b7ff7d6f6d48ba4701afc1a8a2f9f037c4a02d7716664",
+          "824382": "4afe2caa25aa3078b5674d4ecf53be0ed6fa36afb3428c30c7851c5187c988c4",
+          "824467": "3fc29497ad80058de6115220fe1b2ab2a7b5128b6d9db08f0925e2fc9415af65",
+          "824626": "b65e4b4aeec3af268a04d9509c79355106211931aa8abed0f4f32627f76e855c",
+          "825031": "2122c4e3e9e19d1a3dee0c5926565fbd6271234858fbc53c1672b509aec0f2b9"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-17",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "pass",
+      "assessment": "source_reconciled",
+      "source_reconciliation": {
+        "status": "pass",
+        "assessment": "source_reconciled"
+      },
+      "metrics": {
+        "official_final_games": 9,
+        "local_completed_context_games": 9,
+        "local_pitch_games": 9,
+        "play_by_play_games_checked": 9,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 683,
+        "official_pitch_plate_appearances": 681,
+        "local_pitch_plate_appearances": 681,
+        "official_pitch_events": 2619,
+        "local_pitch_rows": 2619
+      },
+      "local_layers": {
+        "raw_games": 9,
+        "raw_regular_season_rows": 2628,
+        "raw_pitch_proxy_rows": 2619,
+        "raw_null_pitch_type_rows": 9,
+        "silver_pitch_games": 9,
+        "silver_pitch_rows": 2619
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {},
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-17&endDate=2026-09-17",
+        "schedule_sha256": "7a9346b044c84e545a7a2ad7bb1ff49b039f617cd742450d31abe429b3e1b58a",
+        "game_feed_sha256": {
+          "822845": "f839b9d0acaee0e75b4c3c48b79cab2f664761a01ff1f2e15800b8d87a9fd388",
+          "822924": "ddeaaf79a04a06b13e853b773c6e4826b83d73c7f208a913577173f8804dc910",
+          "823334": "ba149196aad06afd9266203d090dbe5bcc970747c7331bc03c7bdd39d1143568",
+          "823573": "4d8d4420ce6baeddc3eedda7ddc97fb14e76edd9e10fee2503fe7452722c3e41",
+          "823978": "e9b7b365e35f24cbcbf228651be8cf9fda93b69f300b2220643b75ac25906b35",
+          "824141": "30417fc04048a6b00d825b241bfe5c89a238076ce2813512ac61e3ceeb5c2bb1",
+          "824305": "e03603ebc3fdd98fcd8321aa650df0de88ea4c02eafa3cfb1d3125bbba336275",
+          "824464": "961e1e97b1a3ed5d0844a7b9e02a4cf26cb5b14bc71ee03b717bae88d971ef43",
+          "824548": "585ea1f56ef56d77b74a99dab749e80b3797a2abf9540622edad99240d74f1a4"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-18",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "pass",
+      "assessment": "source_reconciled",
+      "source_reconciliation": {
+        "status": "pass",
+        "assessment": "source_reconciled"
+      },
+      "metrics": {
+        "official_final_games": 15,
+        "local_completed_context_games": 15,
+        "local_pitch_games": 15,
+        "play_by_play_games_checked": 15,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 1162,
+        "official_pitch_plate_appearances": 1162,
+        "local_pitch_plate_appearances": 1162,
+        "official_pitch_events": 4536,
+        "local_pitch_rows": 4536
+      },
+      "local_layers": {
+        "raw_games": 15,
+        "raw_regular_season_rows": 4541,
+        "raw_pitch_proxy_rows": 4536,
+        "raw_null_pitch_type_rows": 5,
+        "silver_pitch_games": 15,
+        "silver_pitch_rows": 4536
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {},
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-18&endDate=2026-09-18",
+        "schedule_sha256": "13b877f64c96190ba5a3c34415451c881f05ed82490cd4d26c7614108e019ac3",
+        "game_feed_sha256": {
+          "822847": "858f66df2bf723d0e6ea107a954b8380a29530c2a80ac6d23c5507f830a16b1a",
+          "822923": "8a77ba8624c5d5831d4b02ec42131c19ff1655ac1f59bfbcde63c6f8d42c0b6d",
+          "823005": "0ec1fc5d04fb3fb7b415f313e360a997baefec296f56d4af54daf6b8fecb096c",
+          "823252": "9fcc3e3ac0217bc830f00d5d43237fb12c28f992bf7712384dc7765a7518f51c",
+          "823331": "b646d9f0b7888b17628d5e71b8d63b9c2e00ca242cc2f24f9d55faf718e387ca",
+          "823572": "ea4fa6629039d2091999d694c9a574554b5cded7ba8730707e42f3788e3c7c01",
+          "823898": "1e61375591507ee85ac4d2c7f7504220d21af794e5e0ce94bcb954a4d8f48162",
+          "823977": "ede271f3f294bc2cd902e124e2a969fde15791477f1bd80b12de682cca11f584",
+          "824138": "8618f71aae2ab0e4d89797718f8075f372de76b5a64210dc90acf3741d333ff0",
+          "824303": "cd1c46b37898010d5427be775a56ce546be06d28e4258667f5daf691dfbde29c",
+          "824383": "3612e66926231010f41430ab83b259bd14c9623b8f83a40f35b27d84e4098026",
+          "824463": "b837f4ed2e791de83d185070429bad5f649cf215ef1cc6a935e4dd4a2927859e",
+          "824547": "3888b8b3925b243e9e10da2eabc215867e7c76643f4ffc64bde1d65a95d90e07",
+          "824790": "55936f912ff31af397c340d0d39e138bdd32a52c4a8c3795c3a0010acecfe924",
+          "825032": "e87e280d4185c37a233e7cf04a511e8e74919fce370f7f9452669f960481cf7e"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-19",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "error",
+      "assessment": "source_mismatch",
+      "source_reconciliation": {
+        "status": "error",
+        "assessment": "source_mismatch"
+      },
+      "metrics": {
+        "official_final_games": 15,
+        "local_completed_context_games": 15,
+        "local_pitch_games": 15,
+        "play_by_play_games_checked": 15,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 1177,
+        "official_pitch_plate_appearances": 1173,
+        "local_pitch_plate_appearances": 1173,
+        "official_pitch_events": 4548,
+        "local_pitch_rows": 4547
+      },
+      "local_layers": {
+        "raw_games": 15,
+        "raw_regular_season_rows": 4572,
+        "raw_pitch_proxy_rows": 4548,
+        "raw_null_pitch_type_rows": 25,
+        "silver_pitch_games": 15,
+        "silver_pitch_rows": 4547
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {
+        "plate_appearance_pitch_counts": [
+          {
+            "game_pk": 825029,
+            "at_bat_number": 59,
+            "official": 6,
+            "local": 5
+          }
+        ]
+      },
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-19&endDate=2026-09-19",
+        "schedule_sha256": "dde1f5520544314089571620cd9886af5658265d226b50196adccbd170872340",
+        "game_feed_sha256": {
+          "822843": "468df51201d740bc012bbf6c1ad28d2de35c825263673359524d910061217343",
+          "822921": "d73fbb280f3b2891c680d6cc95fc5bf9c3c054cb5cb15a4785733efec1945f7f",
+          "823003": "de34d64d878ea81949b2d73258db4f8ead83f4408b05439992c14c4ad133b40e",
+          "823249": "19ce7a03cc4a79ea5159c49107ad15d041cd3352eef03d6713d9b4fdf8203850",
+          "823330": "f450e7f491d7c21821eb62068997c9e6ef238c5943a8f945cab811a361c015fc",
+          "823571": "240d1431e2391d4be286f983d1a21a19425d28426fcf71864cb58362c260a33c",
+          "823899": "65289addd0a8a71cdf41aae048caf2bce60ecbc60a0c05b80c3ae8c39679e4d8",
+          "823976": "a3ad0d4eceec00077a6e731e7909ddc45fcbc430638c83f9b753b2dea2a6c7a8",
+          "824137": "bbcab62db3f7aea51d5e2218c6132db1c8fd5b5f0f47acbda57216bbefb221c9",
+          "824304": "915500fafc82d9c626f8087609d7790af26479b92fbd4144b8f42619470a43e6",
+          "824380": "1a0fd6fbc785fbaf0ca8edb8b324f8f5ca0fe05fee8e3d905fe4941f0346a42a",
+          "824461": "279823f173be7af7fdd1c82c03a011aedd9ede6484c22397f51802130ec44684",
+          "824545": "2f730e82e0639a0525b23d1b8726100b12d5c640c6e0db8ee0c2d05d90da96b6",
+          "824788": "3339288da179bd0be9b09d8c63343feaca3b6825038ce44e8df0841bf8eedca4",
+          "825029": "2037dc6c67dd6e952b332754669ac90a68dcc45d9251ab925d8adc7e5eb2064f"
+        }
+      }
+    },
+    {
+      "official_date": "2026-09-20",
+      "checked_at_utc": "2026-09-24T02:50:29.174437+00:00",
+      "status": "error",
+      "assessment": "source_mismatch",
+      "source_reconciliation": {
+        "status": "error",
+        "assessment": "source_mismatch"
+      },
+      "metrics": {
+        "official_final_games": 15,
+        "local_completed_context_games": 15,
+        "local_pitch_games": 15,
+        "play_by_play_games_checked": 15,
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": 1083,
+        "official_pitch_plate_appearances": 1083,
+        "local_pitch_plate_appearances": 1083,
+        "official_pitch_events": 4260,
+        "local_pitch_rows": 4259
+      },
+      "local_layers": {
+        "raw_games": 15,
+        "raw_regular_season_rows": 4265,
+        "raw_pitch_proxy_rows": 4260,
+        "raw_null_pitch_type_rows": 6,
+        "silver_pitch_games": 15,
+        "silver_pitch_rows": 4259
+      },
+      "raw_matches_official_pitch_events": true,
+      "mismatches": {
+        "plate_appearance_pitch_counts": [
+          {
+            "game_pk": 822844,
+            "at_bat_number": 70,
+            "official": 3,
+            "local": 2
+          }
+        ]
+      },
+      "sources": {
+        "schedule_url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameType=R&startDate=2026-09-20&endDate=2026-09-20",
+        "schedule_sha256": "bf326c86ccaafceb4be5ce026a6f3b299942b2c628fb6e5bea4096f058f5c2ab",
+        "game_feed_sha256": {
+          "822844": "bfaff47e96b6b2075b6d23025656ee6e7ada9efa6d7c3a6cb926141b8d853e14",
+          "822922": "3417ab33e3545c4b6491faadebcd057da4905a1bec6e4fb6f7535d2e63cd9a84",
+          "823001": "96b38ef2f87bdc6382a00fb2d2d730ad2dbff5ec0a202fcb1e14891e40fa79fe",
+          "823247": "8e839d8b4705d788cee3bd32fd2474f3f0e0c7035243d4dcf5d5568b40744838",
+          "823329": "5cb70f45d9827a441f7ce88fd95d5aafae125802662046f8f1fffa492fe96e42",
+          "823570": "4472e84813119da7b92e84b16252fc79ed6e00c9f51bedc3de4944dfdb57ef32",
+          "823896": "d85892112d0988339329a4c3b4b2309a2ac114cce8e4e7765dfd09ff14651c1e",
+          "823975": "14b998978eebdd2c590b9bc94f561a956cb1c088a2c5c5d9dd74c70e73712a18",
+          "824139": "04275062af6ef4c95ef66c19bb49820e4dd804a141157ed5f316c9e22c47fec8",
+          "824300": "f74b85e1f38c73219738bbc9df8ab4b04997e9db36f2973a323e3684514669a7",
+          "824381": "afd0bbf0b104c6b538388a0b196fb8455a0d804a591a010275d1f1d1359ade10",
+          "824462": "3408b59a8a877e690ff5ffc681423c30f85f11b42b1b77ed3e47f8586b5e8ea8",
+          "824546": "c07c104ee40e94423e001da0afbabe392b40977420b9f987257cddc0da87325d",
+          "824789": "49b4d42b68a5531227fc9a635aa53124d923615807e8250584abb8eae58cfe4a",
+          "825028": "36e3c9185e1e25c4ee76aa3067627330b1fa33e60a2d10540b4d4df710321b0a"
+        }
+      }
+    }
+  ]
+}

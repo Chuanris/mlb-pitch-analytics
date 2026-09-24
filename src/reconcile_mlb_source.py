@@ -82,7 +82,10 @@ def final_schedule_games(payload: dict, day: date) -> dict[int, str]:
     return games
 
 
-def feed_plate_appearance_counts(payload: dict, game_pk: int) -> dict[int, int]:
+def feed_plate_appearance_summary(
+    payload: dict,
+    game_pk: int,
+) -> tuple[dict[int, int], int]:
     payload_game_pk = (payload.get("gameData") or {}).get("game", {}).get("pk")
     if payload_game_pk is not None and int(payload_game_pk) != game_pk:
         raise ValueError(
@@ -106,7 +109,7 @@ def feed_plate_appearance_counts(payload: dict, game_pk: int) -> dict[int, int]:
                 f"MLB live feed game {game_pk} repeats atBatIndex {at_bat_index}"
             )
         counts[at_bat_number] = pitch_count
-    return counts
+    return counts, len(plays)
 
 
 def _add_mismatch(target: dict, name: str, value) -> None:
@@ -147,31 +150,19 @@ def reconcile_date(
             "game_feed_sha256": {},
         },
     }
-    if not official_games:
-        return {
-            **base,
-            "status": "attention",
-            "assessment": "unknown_no_final_games",
-            "metrics": {
-                "official_final_games": 0,
-                "local_completed_context_games": 0,
-                "local_pitch_games": 0,
-                "play_by_play_games_checked": 0,
-                "official_pitch_events": 0,
-                "local_pitch_rows": 0,
-            },
-            "mismatches": {},
-            "action": "Choose a date with official final regular-season games.",
-        }
-
     official_id_parameters = sorted(official_ids)
     official_id_placeholders = ", ".join("?" for _ in official_id_parameters)
+    other_date_clause = (
+        f" OR game_pk IN ({official_id_placeholders})"
+        if official_id_parameters
+        else ""
+    )
     relevant_parameters = [day, *official_id_parameters]
 
     context_rows = connection.execute(f"""
         SELECT game_pk, official_date, game_status
         FROM silver.fact_game_context
-        WHERE official_date = ? OR game_pk IN ({official_id_placeholders})
+        WHERE official_date = ?{other_date_clause}
     """, relevant_parameters).fetchall()
     local_completed_ids = {
         int(game_pk)
@@ -185,7 +176,7 @@ def reconcile_date(
     pitch_rows = connection.execute(f"""
         SELECT game_pk, game_date, at_bat_number, COUNT(*) AS pitch_rows
         FROM silver.fact_pitch
-        WHERE game_date = ? OR game_pk IN ({official_id_placeholders})
+        WHERE game_date = ?{other_date_clause}
         GROUP BY game_pk, game_date, at_bat_number
     """, relevant_parameters).fetchall()
     local_pa_counts = {
@@ -198,34 +189,36 @@ def reconcile_date(
     for game_pk, game_date, _, _ in pitch_rows:
         pitch_dates.setdefault(int(game_pk), set()).add(str(game_date))
 
-    checked_game_ids = official_ids & local_pitch_ids
     official_pa_counts: dict[tuple[int, int], int] = {}
-    for game_pk in sorted(checked_game_ids):
+    official_plate_appearances = 0
+    for game_pk in sorted(official_ids):
         feed_url = game_feed_url(game_pk)
         feed = fetch_json(feed_url)
         base["sources"]["game_feed_sha256"][str(game_pk)] = payload_digest(feed)
-        for at_bat_number, count in feed_plate_appearance_counts(feed, game_pk).items():
+        pitch_counts, play_count = feed_plate_appearance_summary(feed, game_pk)
+        official_plate_appearances += play_count
+        for at_bat_number, count in pitch_counts.items():
             official_pa_counts[(game_pk, at_bat_number)] = count
 
-    checked_local_pa_counts = {
+    compared_local_pa_counts = {
         key: count
         for key, count in local_pa_counts.items()
-        if key[0] in checked_game_ids
+        if key[0] in official_ids
     }
-    missing_pa = sorted(set(official_pa_counts) - set(checked_local_pa_counts))
-    unexpected_pa = sorted(set(checked_local_pa_counts) - set(official_pa_counts))
+    missing_pa = sorted(set(official_pa_counts) - set(compared_local_pa_counts))
+    unexpected_pa = sorted(set(compared_local_pa_counts) - set(official_pa_counts))
     count_mismatches = [
         {
             "game_pk": game_pk,
             "at_bat_number": at_bat_number,
             "official": official_pa_counts[(game_pk, at_bat_number)],
-            "local": checked_local_pa_counts[(game_pk, at_bat_number)],
+            "local": compared_local_pa_counts[(game_pk, at_bat_number)],
         }
         for game_pk, at_bat_number in sorted(
-            set(official_pa_counts) & set(checked_local_pa_counts)
+            set(official_pa_counts) & set(compared_local_pa_counts)
         )
         if official_pa_counts[(game_pk, at_bat_number)]
-        != checked_local_pa_counts[(game_pk, at_bat_number)]
+        != compared_local_pa_counts[(game_pk, at_bat_number)]
     ]
 
     missing_context = sorted(official_ids - local_completed_ids)
@@ -283,23 +276,35 @@ def reconcile_date(
         count_mismatches,
     )
 
+    metrics = {
+        "official_final_games": len(official_ids),
+        "local_completed_context_games": len(local_completed_ids),
+        "local_pitch_games": len(local_pitch_ids),
+        "play_by_play_games_checked": len(official_ids),
+        "play_by_play_games_skipped": 0,
+        "official_plate_appearances": official_plate_appearances,
+        "official_pitch_plate_appearances": len(official_pa_counts),
+        "local_pitch_plate_appearances": len(local_pa_counts),
+        "official_pitch_events": sum(official_pa_counts.values()),
+        "local_pitch_rows": sum(local_pa_counts.values()),
+    }
+    if not official_ids and not mismatches:
+        return {
+            **base,
+            "status": "attention",
+            "assessment": "unknown_no_final_games",
+            "metrics": metrics,
+            "mismatches": {},
+            "action": "Choose a date with official final regular-season games.",
+        }
+
     status = "error" if mismatches else "pass"
     assessment = "source_mismatch" if mismatches else "source_reconciled"
     return {
         **base,
         "status": status,
         "assessment": assessment,
-        "metrics": {
-            "official_final_games": len(official_ids),
-            "local_completed_context_games": len(local_completed_ids),
-            "local_pitch_games": len(local_pitch_ids),
-            "play_by_play_games_checked": len(checked_game_ids),
-            "play_by_play_games_skipped": len(official_ids - checked_game_ids),
-            "official_plate_appearances": len(official_pa_counts),
-            "local_plate_appearances": len(checked_local_pa_counts),
-            "official_pitch_events": sum(official_pa_counts.values()),
-            "local_pitch_rows": sum(checked_local_pa_counts.values()),
-        },
+        "metrics": metrics,
         "mismatches": mismatches,
         "action": (
             "Inspect the listed game and plate-appearance mismatches before claiming source reconciliation."

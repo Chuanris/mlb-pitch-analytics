@@ -49,7 +49,26 @@ class MlbSourceReconciliationTests(unittest.TestCase):
         }
 
     @staticmethod
-    def feed_payload():
+    def feed_payload(*, include_no_pitch_play=False):
+        plays = [
+            {
+                "about": {"atBatIndex": 0},
+                "playEvents": [
+                    {"isPitch": True},
+                    {"isPitch": False, "type": "action"},
+                    {"isPitch": True},
+                ],
+            },
+            {
+                "about": {"atBatIndex": 1},
+                "playEvents": [{"isPitch": True}],
+            },
+        ]
+        if include_no_pitch_play:
+            plays.append({
+                "about": {"atBatIndex": 2},
+                "playEvents": [{"isPitch": False, "type": "action"}],
+            })
         return {
             "gameData": {
                 "game": {"pk": 2001},
@@ -57,20 +76,7 @@ class MlbSourceReconciliationTests(unittest.TestCase):
             },
             "liveData": {
                 "plays": {
-                    "allPlays": [
-                        {
-                            "about": {"atBatIndex": 0},
-                            "playEvents": [
-                                {"isPitch": True},
-                                {"isPitch": False, "type": "action"},
-                                {"isPitch": True},
-                            ],
-                        },
-                        {
-                            "about": {"atBatIndex": 1},
-                            "playEvents": [{"isPitch": True}],
-                        },
-                    ]
+                    "allPlays": plays
                 }
             },
         }
@@ -121,7 +127,71 @@ class MlbSourceReconciliationTests(unittest.TestCase):
         self.assertEqual(result["assessment"], "source_mismatch")
         self.assertEqual(result["mismatches"]["missing_context_games"], [2001])
         self.assertEqual(result["mismatches"]["missing_pitch_games"], [2001])
-        self.assertEqual(result["metrics"]["play_by_play_games_checked"], 0)
+        self.assertEqual(result["metrics"]["play_by_play_games_checked"], 1)
+        self.assertEqual(result["metrics"]["play_by_play_games_skipped"], 0)
+        self.assertEqual(result["metrics"]["official_plate_appearances"], 2)
+        self.assertEqual(result["metrics"]["official_pitch_events"], 3)
+
+    def test_no_official_final_games_does_not_hide_unexpected_local_data(self):
+        self.seed_complete_local_game()
+
+        result = self.reconcile(
+            fetcher=lambda url: self.schedule_payload(final=False)
+        )
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["assessment"], "source_mismatch")
+        self.assertEqual(
+            result["mismatches"]["unexpected_completed_context_games"],
+            [2001],
+        )
+        self.assertEqual(result["mismatches"]["unexpected_pitch_games"], [2001])
+        self.assertEqual(result["metrics"]["official_final_games"], 0)
+        self.assertEqual(result["metrics"]["local_completed_context_games"], 1)
+        self.assertEqual(result["metrics"]["local_pitch_games"], 1)
+        self.assertEqual(result["metrics"]["local_pitch_rows"], 3)
+
+    def test_unexpected_local_game_is_included_in_local_totals(self):
+        self.seed_complete_local_game()
+        self.connection.execute(
+            "INSERT INTO silver.fact_game_context VALUES (2002, DATE '2025-04-02', 'Final')"
+        )
+        self.connection.execute(
+            "INSERT INTO silver.fact_pitch VALUES (2002, DATE '2025-04-02', 1)"
+        )
+
+        result = self.reconcile()
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(
+            result["mismatches"]["unexpected_completed_context_games"],
+            [2002],
+        )
+        self.assertEqual(result["mismatches"]["unexpected_pitch_games"], [2002])
+        self.assertEqual(result["metrics"]["local_completed_context_games"], 2)
+        self.assertEqual(result["metrics"]["local_pitch_games"], 2)
+        self.assertEqual(result["metrics"]["local_pitch_plate_appearances"], 3)
+        self.assertEqual(result["metrics"]["local_pitch_rows"], 4)
+
+    def test_metrics_distinguish_all_plays_from_pitch_bearing_plate_appearances(self):
+        self.seed_complete_local_game()
+
+        def fetcher(url):
+            if "/schedule?" in url:
+                return self.schedule_payload()
+            if "/game/2001/feed/live" in url:
+                return self.feed_payload(include_no_pitch_play=True)
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        result = self.reconcile(fetcher=fetcher)
+
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["metrics"]["official_plate_appearances"], 3)
+        self.assertEqual(
+            result["metrics"]["official_pitch_plate_appearances"],
+            2,
+        )
+        self.assertEqual(result["metrics"]["local_pitch_plate_appearances"], 2)
 
     def test_equal_daily_total_cannot_hide_plate_appearance_mismatches(self):
         self.connection.execute(
