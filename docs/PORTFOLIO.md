@@ -15,7 +15,7 @@ Use this page to explain the engineering choices with evidence from the reposito
 | Transformation tools | dbt source-to-staging-to-incremental-to-mart DAG, seed, documentation and 20 data tests | Implemented and verified on DuckDB |
 | Medallion architecture | Bronze raw source, Silver staging/outcomes and Gold analytical marts | Implemented |
 | DevOps | Airflow 3 daily DAG, bounded parallelism, retries/timeouts, PostgreSQL metadata, Git, GitHub Actions, Python/PostgreSQL/dbt tests, Terraform CI and protected cloud plan/apply | Six-job CI matrix verified; live scheduler service pending Docker |
-| Communication | Matched English and Traditional Chinese README, operations, OLTP, dbt, cloud, Airflow, portfolio and AI-workflow guides | Implemented |
+| Communication | English-only README for public scanning, plus bilingual operations, OLTP, dbt, cloud, Airflow, portfolio and AI-workflow guides | Implemented |
 | AI proficiency | [AI workflow](AI_WORKFLOW.md), human-review boundaries, public failure-to-fix case study, PR evidence template and CI-enforced claim contracts | Implemented with traceable evidence; no unmeasured productivity claim |
 
 ## Verified evidence / 已驗證證據
@@ -28,19 +28,20 @@ Run `.\.venv\Scripts\python.exe -m src.observability_demo` for a credential-free
 
 The Data Platform CI workflow is configured to publish the same JSON as `observability-contract-evidence` for 30 days, but cite it as a public run artifact only after the updated workflow completes successfully on GitHub.
 
-The live [MLB source reconciliation](SOURCE_RECONCILIATION.md) separately compares official schedule and play-by-play responses with DuckDB. A dated run reconciled 15 games, 1,123 plate appearances and 4,380 pitch events for September 9, 2026. September 20 correctly failed with 15 official final games missing locally, so the repository does not claim current-range completeness.
+The live [MLB source reconciliation](SOURCE_RECONCILIATION.md) separately compares official schedule and play-by-play responses with DuckDB. The versioned [September 9–20 manifest](../evidence/mlb-source-audit/2026-09-09_2026-09-20.json) checked 159 final games and 46,843 pitch events across 12 dates. Its documented Raw proxy matched daily official totals on all 12 dates, while Silver contained 46,821 rows—22 fewer—and retained five dates as errors. This is bounded count-reconciliation evidence, not proof of season-wide or semantic completeness.
 
 執行 `.\.venv\Scripts\python.exe -m src.observability_demo` 可使用不需憑證的 in-memory 展示。機器可讀輸出會驗證健康日期（`pass`）、未定狀態日期（`attention`），以及 completed game 缺少同日 coverage（`error`）。這能證明已實作的分支契約，但不能證明上游來源完整。
 
 Data Platform CI 已設定將同一份 JSON 以 `observability-contract-evidence` 保存 30 天；只有更新後的 workflow 在 GitHub 成功完成，才能把它引用為公開 run artifact。
 
-即時 [MLB 來源對帳](SOURCE_RECONCILIATION.md)會另外將官方 schedule／play-by-play response 與 DuckDB 比較。2026-09-09 的有日期 run 完成 15 場比賽、1,123 個 plate appearances 與 4,380 個 pitch events 的對帳；2026-09-20 則正確因本地缺少 15 場官方 Final games 而失敗，因此本專案不宣稱 current-range 已完整。
+即時 [MLB 來源對帳](SOURCE_RECONCILIATION.md)會另外將官方 schedule／play-by-play response 與 DuckDB 比較。版本化的 [9 月 9–20 日 manifest](../evidence/mlb-source-audit/2026-09-09_2026-09-20.json) 在 12 天檢查 159 場 Final games 與 46,843 個 pitch events；文件定義的 Raw proxy 每日總數皆與官方一致，但 Silver 僅有 46,821 筆、少 22 筆，並保留五天為 error。這是有限期間的 count reconciliation 證據，不是整季或語意完整性的證明。
 
 Published CI baseline and current local verification:
 
 - [Data platform CI run 34642844311](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34642844311) passed all six jobs: Python/pipeline contracts, PostgreSQL integration, two dbt builds, BigQuery parse/MPP contracts, two Terraform module validations and Airflow DAG execution.
 - The [AI-assisted engineering case study](AI_WORKFLOW.md) traces an invalid workflow, environment-specific Python/Airflow failures, focused repair commits and the final six-job green run. The PR template requires human review, rejected-suggestion notes, validation evidence and claim/security checks.
 - The [SQL performance study](SQL_PERFORMANCE.md) measured four workloads over 1,355,356 pitch facts. Eight threads produced 1.930x and 1.954x median speedups for full-scan aggregation and the fact/context join; the selective query peaked at four threads and the window workload scaled only 1.165x. All cross-thread result checksums matched.
+- The self-contained dashboard snapshot was reduced from 45,673,684 to 42,985,307 bytes (5.9%) and the built HTML from 48,743,348 to 46,055,078 bytes (5.5%) without changing the 71,677-row pitch-summary grain or its calculations. Pages CI now enforces raw snapshot, built HTML, deterministic gzip-9, largest-query and row-count budgets.
 - `dbt build` completed 25/25 resources: four models, one seed and 20 tests.
 - A second fixture build retained exactly nine pitch rows, proving the incremental rerun did not duplicate the latest partition.
 - Full-data dbt output matched the existing gold tables: 1,355,356 pitch rows, 13,288 pitcher/pitch-type mart rows and 56,191 count-strategy mart rows.
@@ -53,6 +54,7 @@ Published CI baseline and current local verification:
 - [Data platform CI run 34642844311](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34642844311) 的六個 jobs 全部成功：Python／pipeline contracts、PostgreSQL integration、兩次 dbt build、BigQuery parse／MPP contracts、兩個 Terraform modules validation，以及 Airflow DAG execution。
 - [AI 輔助工程 case study](AI_WORKFLOW.md) 追蹤 invalid workflow、Python／Airflow 環境差異 failures、針對性修正 commits 與最終六個 jobs 全綠的 run；PR template 要求人工審核、被拒絕建議、驗證證據，以及 claims／security checks。
 - [SQL 效能研究](SQL_PERFORMANCE.md)對 1,355,356 筆逐球 facts 量測四類 workload。8 threads 讓 full-scan aggregation 與 fact/context join 的 median 分別改善 1.930x 與 1.954x；selective query 在 4 threads 最佳，而 window workload 只改善 1.165x。所有跨 thread 結果 checksums 都一致。
+- 自含 dashboard snapshot 從 45,673,684 降至 42,985,307 bytes（5.9%），built HTML 從 48,743,348 降至 46,055,078 bytes（5.5%），同時保留 71,677-row pitch-summary grain 與原有計算。Pages CI 現在會檢查 raw snapshot、built HTML、deterministic gzip-9、最大 query 與 row-count budgets。
 - `dbt build` 完成 25/25：四個 models、一個 seed、20 個 tests。
 - Fixture 第二次執行後仍維持九筆逐球資料，證明 incremental rerun 沒有重複最新分區。
 - 完整資料的 dbt 輸出與既有 gold 表一致：1,355,356 筆逐球、13,288 筆投手／球種 mart、56,191 筆球數策略 mart。
@@ -65,6 +67,7 @@ Published CI baseline and current local verification:
 English:
 
 - Implemented a persistent DuckDB observability gate with freshness/schema/SQL-quality history and same-date game coverage; separated deterministic integrity errors from unsettled/baseline/volume uncertainty, integrated Airflow failure propagation, and verified the contract with 15 regression tests plus an in-memory demo.
+- Built a versioned official MLB schedule/live-feed audit at game and plate-appearance grain; checked 159 final games and 46,843 pitch events across 12 dates, matched a documented Raw proxy on all 12, and surfaced a 22-row Silver gap without overstating completeness.
 
 - Built a tested medallion analytics pipeline for 1.35M+ MLB Statcast pitches using Python, DuckDB, SQL and dbt, producing reusable pitcher and count-strategy marts.
 - Implemented an idempotent incremental dbt model and 20 schema/business/reconciliation tests; matched 1,355,356 pitch rows and both analytical marts against legacy gold outputs.
@@ -72,13 +75,15 @@ English:
 - Secured cloud CI/CD with repository- and branch-scoped GitHub OIDC, separate infrastructure/runtime identities, private versioned object storage, least-privilege dataset grants, manual approval and query-cost guards.
 - Orchestrated a 15-task Airflow 3 daily pipeline with safe parallel extraction/product branches, serialized DuckDB/dbt write barriers, retry and timeout policies, overlap prevention and final health gates; validated DAG serialization and complete plan-only execution in GitHub Actions.
 - Engineered a PostgreSQL OLTP companion for mutable pipeline and forecast state with relational constraints, transactional writes, idempotency keys and workload-specific indexes; automated service-backed integration tests in GitHub Actions.
-- Documented architecture, metric denominators, security boundaries and operating procedures in English and Traditional Chinese, separating verified local results from pending cloud claims.
+- Published an English-only README and bilingual engineering guides covering architecture, metric denominators, security boundaries and operations, separating verified local results from pending cloud claims.
 - Applied AI-assisted software engineering to analyze the repository, implement four data-platform capability stages and diagnose Linux CI failures; converted suggestions into human-reviewed commits and a six-job green evidence chain without inventing productivity metrics or live-cloud results.
 - Built a reproducible DuckDB SQL benchmark over 1.36M pitch facts with scans, filters, hash joins and partitioned windows; verified exact results across 1/2/4/8 threads and measured up to 1.95x median speedup while documenting non-linear scaling and cache limits.
+- Reduced a self-contained dashboard snapshot by 5.9% and its built HTML by 5.5% without changing analytical grain or metric outputs; added CI-enforced raw, gzip, query-size and row-count performance budgets.
 
 繁體中文：
 
 - 實作持久化 DuckDB observability gate，涵蓋 freshness／schema／SQL 品質歷史與同日場次 coverage；區分確定性 integrity errors 與 unsettled／baseline／volume 不確定性、串接 Airflow 失敗傳遞，並以 15 項回歸測試及 in-memory demo 驗證契約。
+- 建立版本化的 MLB 官方 schedule／live-feed 稽核，以 game 與 plate-appearance grain 在 12 天檢查 159 場 Final games 與 46,843 個 pitch events；12 天的文件化 Raw proxy 都一致，並揭露 Silver 少 22 筆而不誇大完整性。
 
 - 使用 Python、DuckDB、SQL 與 dbt 建立具測試的 Medallion 分析管線，處理超過 135 萬筆 MLB Statcast 逐球資料，產出可重用的投手與球數策略 marts。
 - 實作可冪等重跑的 incremental dbt model 與 20 項 schema、商業規則及 reconciliation tests；1,355,356 筆逐球資料與兩個分析 marts 均對齊既有 gold 輸出。
@@ -86,9 +91,10 @@ English:
 - 以限定 repository／branch 的 GitHub OIDC、分離的 infrastructure／runtime identities、私有版本化 object storage、最小權限 dataset grants、人工核准與 query-cost guards 強化雲端 CI/CD。
 - 使用 Airflow 3 編排 15-task daily pipeline，包含安全平行的 extraction／product branches、序列化 DuckDB／dbt write barriers、retry／timeout policies、防止重疊執行與最終 health gates，並在 GitHub Actions 驗證 DAG serialization 與完整 plan-only execution。
 - 為可變動的 pipeline 與預測狀態建立 PostgreSQL OLTP 配套，涵蓋關聯約束、交易式寫入、冪等鍵與依工作負載設計的索引，並在 GitHub Actions 自動執行 service-backed integration tests。
-- 以英文與繁體中文說明架構、指標分母、安全邊界與維運流程，清楚區分已驗證的本機結果與尚待執行的雲端項目。
+- 以英文 README 與雙語工程指南說明架構、指標分母、安全邊界與維運流程，清楚區分已驗證的本機結果與尚待執行的雲端項目。
 - 使用 AI 輔助工程方法分析 repo、實作四個 data-platform capability stages 並診斷 Linux CI failures；將建議轉成經人工審核的 commits 與六個 jobs 全綠的證據鏈，不捏造 productivity metrics 或 live-cloud results。
 - 建立可重跑的 DuckDB SQL benchmark，涵蓋 136 萬筆逐球 facts 的 scan、filter、hash join 與 partitioned window；驗證 1／2／4／8 threads 的結果完全一致，量測到最高 1.95x median speedup，並記錄非線性 scaling 與 cache 限制。
+- 在不改分析 grain 或指標輸出的前提下，將自含 dashboard snapshot 縮減 5.9%、built HTML 縮減 5.5%，並加入由 CI 強制執行的 raw、gzip、query-size 與 row-count 效能預算。
 
 ## Interview story / 面試敘事
 

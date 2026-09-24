@@ -16,6 +16,8 @@
 | Inspect local health | `.\.venv\Scripts\python.exe -m src.health_check --max-age-days 2` | Read-only; checks data age, lineage and pipeline status |
 | Demonstrate observability states | `.\.venv\Scripts\python.exe -m src.observability_demo` | Uses only in-memory fixtures; does not read or write project data |
 | Reconcile an official MLB date | `.\.venv\Scripts\python.exe -m src.reconcile_mlb_source --date YYYY-MM-DD` | Read-only DuckDB access plus live official schedule/play-by-play requests |
+| Build a versioned MLB source audit | `.\.venv\Scripts\python.exe -m src.build_mlb_source_audit --start-date YYYY-MM-DD --end-date YYYY-MM-DD --output evidence/mlb-source-audit/<range>.json` | Read-only DuckDB plus live official requests; writes a compact manifest even when mismatches produce a nonzero exit |
+| Check dashboard payload budgets | `node scripts/check_dashboard_payload.mjs` after building the dashboard | Read-only; checks snapshot, built HTML, deterministic gzip-9, largest-query and row-count limits from `config/dashboard_performance.json` |
 | Exercise PostgreSQL OLTP | `docker compose up -d postgres`, then `.\.venv\Scripts\python.exe -m src.oltp_store demo` | Writes local operational demo rows only; does not alter DuckDB or the dashboard |
 | Validate dbt transformations | In `warehouse/`, run `..\.venv\Scripts\dbt.exe build --profiles-dir . --target duckdb` | Writes only isolated `dbt_mlb_*` schemas and reconciles marts to legacy gold |
 | Review GCP changes | Manually dispatch **GCP BigQuery portfolio deployment** with `operation=plan` | Read-only cloud plan; requires configured OIDC environment variables |
@@ -27,14 +29,14 @@ The Windows daily task updates local files and rebuilds local HTML. It does **no
 
 ### Publish a reviewed change
 
-1. Inspect `git status --short` and `git diff`. Keep local lessons, `.env`, raw data, databases, model files, outputs, logs and browser profiles out of the commit. Commit authored source, tests and the reviewed public snapshot together.
-2. Run Python tests from the root: `.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"`. Run `node --test dashboard/tests/mlb-pitch-analysis.test.mjs dashboard/tests/mlb-hitter-analysis.test.mjs` for the MLB aggregation and hitter decision helpers.
+1. Inspect `git status --short` and `git diff`. Keep local lessons, `.env`, raw data, databases, model files, outputs, logs and browser profiles out of the commit. Commit authored source, tests, the reviewed public snapshot, and any compact versioned evidence manifest supporting a published claim together.
+2. Run Python tests from the root: `.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"`. Run `node --test dashboard/tests/mlb-pitch-analysis.test.mjs dashboard/tests/mlb-hitter-analysis.test.mjs dashboard/tests/dashboard-payload-budget.test.mjs dashboard/tests/snapshot-integrity.test.mjs` for the MLB aggregation, hitter decision helpers, payload budget, and public snapshot contracts.
    When PostgreSQL is available, also set `TEST_DATABASE_URL` and run `.\.venv\Scripts\python.exe -m unittest tests.integration.test_postgres_oltp -v`; GitHub's `Data platform CI` workflow performs this against a real PostgreSQL service automatically.
    For transformation changes, install `requirements-dbt.txt`, then run `dbt build` twice from `warehouse/`; the second pass validates incremental idempotency. GitHub Actions repeats this with a deterministic DuckDB fixture.
    For infrastructure changes, inspect Terraform CI first, run the manual cloud workflow with `plan`, and only then approve `apply`. See [the cloud evidence guide](CLOUD.md); never point the fixture workflow at shared or production datasets.
    For orchestration changes, keep the canonical command builder in `run_pipeline.py`, run the Python suite, and pass the 15-task Airflow topology contract. A plan-only DAG test is not evidence of a completed refresh.
-3. In `dashboard/`, run `npm.cmd ci` and `npm.cmd run build`. From the root, run `node scripts/check_compare.mjs prepublish`. Chrome must be installed; `CHROME_PATH` overrides its location.
-4. Commit the reviewed files and push to `main`. Dashboard changes or changes to the browser-check script trigger the Pages workflow; documentation-only changes do not require rebuilding the site. The workflow can also be dispatched manually.
+3. In `dashboard/`, run `npm.cmd ci` and `npm.cmd run build`. From the root, run `node scripts/check_dashboard_payload.mjs`, then `node scripts/check_compare.mjs prepublish`. Chrome must be installed for the browser check; `CHROME_PATH` overrides its location.
+4. Commit the reviewed files and push to `main`. Dashboard changes, either dashboard-check script, or the dashboard performance budget trigger the Pages workflow; documentation-only changes do not require rebuilding the site. The workflow can also be dispatched manually.
 5. Check the matching commit in GitHub Actions. The workflow verifies the protected runtime, builds the HTML, runs analysis tests and checks Compare in Chrome before uploading the Pages artifact. Its `compare-browser-check` artifact retains JSON and desktop/mobile screenshots for seven days.
 6. Open the deployed URL and check Compare and Hitters. The browser check also covers open dates, category switches, personal availability and replacement comparisons. To rerun it against the live site in PowerShell:
 
@@ -60,6 +62,7 @@ The check writes evidence under `outputs/performance/` and exits nonzero on a br
 | Airflow DAG is missing or has import errors | Confirm Airflow 3.3.1/Python 3.12, `MLB_PROJECT_ROOT`, the mounted `orchestration/dags` path and DAG processor health. Do not downgrade the DAG to deprecated Airflow 2 import paths. |
 | Daily DAG fails at model release verification | Run the explicit retraining workflow and inspect lineage evidence. The preflight intentionally blocks extraction and downstream writes when the frozen release is missing or changed. |
 | Pages fails before upload | Ensure repository Settings → Pages uses GitHub Actions; inspect the failed build/check before rerunning. |
+| Payload budget fails | Read the named metric and limit, then inspect query row count and serialized bytes. Change a budget only for reviewed scope growth; do not raise it merely to bypass a regression. |
 
 The site is a self-contained static snapshot. A public deployment is not an automatically refreshed backend, and browser-local player labels stay on that browser.
 
@@ -77,6 +80,8 @@ The site is a self-contained static snapshot. A public deployment is not an auto
 | 檢查本機健康狀態 | `.\.venv\Scripts\python.exe -m src.health_check --max-age-days 2` | 唯讀檢查資料日期、血緣與流程狀態 |
 | 展示 observability 狀態 | `.\.venv\Scripts\python.exe -m src.observability_demo` | 僅使用記憶體 fixture，不讀寫專案資料 |
 | 對帳指定 MLB 官方日期 | `.\.venv\Scripts\python.exe -m src.reconcile_mlb_source --date YYYY-MM-DD` | 唯讀 DuckDB，加上官方 schedule／play-by-play 即時請求 |
+| 建立版本化 MLB 來源稽核 | `.\.venv\Scripts\python.exe -m src.build_mlb_source_audit --start-date YYYY-MM-DD --end-date YYYY-MM-DD --output evidence/mlb-source-audit/<range>.json` | 唯讀 DuckDB 加上官方即時請求；即使 mismatch 回傳非零，也會寫出精簡 manifest |
+| 檢查 dashboard payload 預算 | dashboard build 後執行 `node scripts/check_dashboard_payload.mjs` | 唯讀；依 `config/dashboard_performance.json` 檢查 snapshot、built HTML、deterministic gzip-9、最大 query 與 row-count 上限 |
 | 驗證 PostgreSQL OLTP | `docker compose up -d postgres`，再執行 `.\.venv\Scripts\python.exe -m src.oltp_store demo` | 只寫入本機操作型 demo 資料，不修改 DuckDB 或儀表板 |
 | 驗證 dbt 轉換 | 在 `warehouse/` 執行 `..\.venv\Scripts\dbt.exe build --profiles-dir . --target duckdb` | 只寫入隔離的 `dbt_mlb_*` schemas，並將 marts 對照既有 gold |
 | 檢查 GCP 變更 | 手動執行 **GCP BigQuery portfolio deployment** 並設定 `operation=plan` | 唯讀雲端 plan；需先設定 OIDC environment variables |
@@ -88,13 +93,13 @@ Windows 每日排程只更新本機檔案並重建本機 HTML，**不會**自動
 
 ### 發布已檢查的變更
 
-1. 檢查 `git status --short` 與 `git diff`。個人 lesson、`.env`、原始資料、資料庫、模型、outputs、日誌與瀏覽器設定檔保持在本機；功能原始碼、測試與已檢查的公開快照一併提交。
-2. 在根目錄執行 Python 測試：`.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"`；執行 `node --test dashboard/tests/mlb-pitch-analysis.test.mjs dashboard/tests/mlb-hitter-analysis.test.mjs` 驗證 MLB 聚合與打者決策邏輯。
+1. 檢查 `git status --short` 與 `git diff`。個人 lesson、`.env`、原始資料、資料庫、模型、outputs、日誌與瀏覽器設定檔保持在本機；功能原始碼、測試、已檢查的公開快照，以及支撐公開說法的精簡版本化 evidence manifest 一併提交。
+2. 在根目錄執行 Python 測試：`.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"`；執行 `node --test dashboard/tests/mlb-pitch-analysis.test.mjs dashboard/tests/mlb-hitter-analysis.test.mjs dashboard/tests/snapshot-integrity.test.mjs` 驗證 MLB 聚合、打者決策邏輯與公開快照契約。
    若 PostgreSQL 可用，也要設定 `TEST_DATABASE_URL`，並執行 `.\.venv\Scripts\python.exe -m unittest tests.integration.test_postgres_oltp -v`；GitHub 的 `Data platform CI` workflow 會自動以真實 PostgreSQL service 執行這項測試。
    修改轉換邏輯時，請安裝 `requirements-dbt.txt`，並在 `warehouse/` 連續執行兩次 `dbt build`；第二次驗證 incremental 冪等性。GitHub Actions 會用 deterministic DuckDB fixture 重複同一流程。
    修改基礎設施時，先確認 Terraform CI，再手動執行雲端 `plan`，最後才核准 `apply`。詳見[雲端證據指南](CLOUD.md)；fixture workflow 不可指向共享或 production datasets。
    修改 orchestration 時，canonical command builder 必須保留在 `run_pipeline.py`，並通過 Python suite 與 15-task Airflow topology contract。Plan-only DAG test 不等於實際資料 refresh。
-3. 在 `dashboard/` 執行 `npm.cmd ci` 與 `npm.cmd run build`，回根目錄執行 `node scripts/check_compare.mjs prepublish`。需安裝 Chrome；可透過 `CHROME_PATH` 指定安裝位置。
+3. 在 `dashboard/` 執行 `npm.cmd ci` 與 `npm.cmd run build`，回根目錄先執行 `node scripts/check_dashboard_payload.mjs`，再執行 `node scripts/check_compare.mjs prepublish`。Browser check 需安裝 Chrome；可透過 `CHROME_PATH` 指定安裝位置。
 4. 提交檢查過的檔案並推送至 `main`。儀表板或瀏覽器檢查腳本有變更時，Pages workflow 自動啟動；純文件變更不必重建網站，也可手動啟動 workflow。
 5. 在 GitHub Actions 確認對應 commit。流程先驗證受保護執行環境、建置 HTML、測試聚合邏輯並用 Chrome 點擊 Compare，通過後才上傳 Pages 產物。`compare-browser-check` artifact 保存 JSON 與桌面／手機截圖七天。
 6. 開啟正式網址並檢查 Compare 與 Hitters。瀏覽器檢查也包含空缺日、類別切換、個人可用名單與替換比較。若要在 PowerShell 自動檢查正式網站：
@@ -121,5 +126,6 @@ finally { Remove-Item Env:DASHBOARD_URL }
 | Airflow DAG 未出現或發生 import error | 確認 Airflow 3.3.1／Python 3.12、`MLB_PROJECT_ROOT`、掛載的 `orchestration/dags` path 與 DAG processor health；不要改回 deprecated Airflow 2 import paths。 |
 | Daily DAG 在 model release verification 失敗 | 執行明確的 retraining workflow 並檢查 lineage evidence。Frozen release 缺失或改變時，preflight 會刻意在 extraction 與 downstream writes 前阻擋流程。 |
 | Pages 在上傳前失敗 | 確認 Settings → Pages 使用 GitHub Actions，先查看失敗的建置／檢查再重新執行。 |
+| Payload budget 失敗 | 先查看錯誤指出的 metric 與 limit，再檢查 query row count 與 serialized bytes。只有已審查的 scope 增長才能調整 budget，不可單純提高上限以繞過 regression。 |
 
 網站是自含資料的靜態快照，公開部署不代表後端會自動刷新；球員清單標記只保存在操作的瀏覽器。

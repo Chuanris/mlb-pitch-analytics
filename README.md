@@ -1,86 +1,78 @@
-# MLB Pitch Strategy & Plate Discipline Analytics
+# MLB Pitch Analytics
 
 [![Data platform CI](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/ci.yml)
 
-[English](#english) · [繁體中文](#繁體中文)
+An MLB Statcast data platform and interactive research dashboard. The project takes dated pitch and game data through Python extraction, DuckDB and SQL transformations, quality checks, model evaluation, and a static React dashboard. It also includes a PostgreSQL operational store, a dbt project, Airflow orchestration, and a deployable GCS/BigQuery design.
 
-**[Live dashboard / 線上儀表板](https://chuanris.github.io/mlb-pitch-analytics/)** · [Portfolio evidence / 履歷證據](docs/PORTFOLIO.md) · [Source reconciliation / 來源對帳](docs/SOURCE_RECONCILIATION.md) · [SQL performance / SQL 效能](docs/SQL_PERFORMANCE.md) · [AI workflow / AI 協作](docs/AI_WORKFLOW.md) · [Cloud platform / 雲端平台](docs/CLOUD.md) · [Airflow orchestration / 工作流程編排](docs/AIRFLOW.md) · [Deployment / 部署狀態](https://github.com/Chuanris/mlb-pitch-analytics/actions/workflows/deploy-pages.yml) · [Operations / 維護指南](docs/OPERATIONS.md)
+[Live dashboard](https://chuanris.github.io/mlb-pitch-analytics/) · [Engineering evidence](docs/PORTFOLIO.md) · [Operations guide](docs/OPERATIONS.md)
 
-> A reproducible MLB Statcast analytics portfolio: Python + PostgreSQL + DuckDB/dbt + deployable GCS/BigQuery infrastructure + scikit-learn + React.
->
-> 可重現的 MLB Statcast 分析作品集：Python + PostgreSQL + DuckDB／dbt + 可部署的 GCS／BigQuery 基礎設施 + scikit-learn + React。
+The public dashboard is a published snapshot. Its data cutoff may differ from the local snapshot and from today's date.
 
----
+## Explore the dashboard
 
-## English
+| Workspace | What it helps answer |
+| --- | --- |
+| **Fantasy** | Which pitchers merit a closer look across recent skill, upcoming starts, and league needs? |
+| **Hitters** | Which available hitters fit open lineup dates and specific 5×5 category needs? |
+| **Compare** | How do two or three pitchers differ in observed skill and next-start strikeout baselines? |
+| **Models** | How did the pitch-quality models perform on a fixed chronological test period? |
+| **Pitch Lab** | How do pitch mix, location, count, handedness, and outcomes relate? |
 
-### Overview
+The interface supports English and Traditional Chinese. The hitter player pool is saved in the browser; it is not a live connection to a fantasy league.
 
-This project examines how MLB pitchers change pitch selection, location, and outcomes across count states and batter handedness. It provides descriptive analysis, post-release pitch-quality models, fantasy-pitching research tools, and a bilingual interactive dashboard.
+## Verified results
 
-It is **not** a game-winner prediction system, betting model, or guaranteed fantasy recommendation.
+These are dated measurements, not claims that every source, deployment, or future run is complete.
 
-### Highlights
+| Evidence | Result | Scope |
+| --- | --- | --- |
+| Reviewed local snapshot, September 23, 2026 | Data through September 22; 1,437,857 Raw rows across all game types, 1,408,305 regular-season Raw rows, 1,403,065 Silver pitch rows, 4,788 games, and 1,128 pitchers | Local DuckDB and reviewed dashboard snapshot; the public site may show an earlier version |
+| Pipeline verification, September 21, 2026 | 33/33 SQL quality checks passed; 32/32 model-release files verified; health check passed at run time | Local data and artifact lineage |
+| Project checks, September 23, 2026 | 163 Python tests passed, three PostgreSQL integration tests skipped locally; 14 focused MLB dashboard, payload, and snapshot tests passed; production build, protected-runtime verification, and Chrome prepublication smoke passed | Local environment; PostgreSQL service tests have a separate CI job |
+| Dashboard payload, September 23, 2026 | Reviewed snapshot reduced from 45,673,684 to 42,985,307 bytes (5.9%); self-contained HTML reduced from 48,743,348 to 46,055,078 bytes (5.5%); deterministic gzip-9 size is 3,498,200 bytes | Same 71,677-row `pitch_summary` grain and calculations; CI enforces source, build, gzip, query-size, and row-count budgets |
+| [DuckDB benchmark](docs/SQL_PERFORMANCE.md), September 12, 2026 | Four workloads over **1,355,356** pitch facts; 1/2/4/8-thread results matched by checksum; best measured scan and join median speedups were 1.93× and 1.95× | Warm local DuckDB runs on one machine, before the later data refresh |
+| [Data platform CI run](https://github.com/Chuanris/mlb-pitch-analytics/actions/runs/34642844311) | Six jobs passed, including Python, PostgreSQL, dbt, BigQuery target parsing, Terraform validation, and Airflow plan execution | BigQuery and Terraform checks did not run a live GCP deployment |
 
-- Persistent [data observability](docs/OBSERVABILITY.md): freshness gates, schema/volume baselines, SQL-quality history and fault-tested recovery through the existing Airflow quality task
-- Live [MLB source reconciliation](docs/SOURCE_RECONCILIATION.md) at game and plate-appearance grain with hashed schedule/play-by-play evidence and explicit current-range failure reporting
+### MLB source audit: September 9–20, 2026
 
-- Restartable Statcast extraction through `pybaseball`
-- MLB schedule, venue, roof, and recorded-weather context
-- Date-partitioned Parquet files and DuckDB bronze/silver/gold layers
-- Optional PostgreSQL OLTP store with constraints, idempotent writes, transactions, and operational indexes
-- Dual-target dbt DAG with an incremental pitch model, 20 data tests, DuckDB reconciliation and BigQuery partition/clustering configuration
-- Terraform-managed private GCS landing, BigQuery datasets, repository-scoped GitHub OIDC, split deploy/runtime identities, and guarded cloud evidence workflow
-- Airflow 3 daily orchestration with two bounded parallel stages, retries, task/DAG timeouts, overlap protection, PostgreSQL metadata and plan-only CI execution
-- Evidence-backed AI-assisted engineering workflow with human review boundaries, public failure-to-fix history and CI-enforced portfolio claims
-- Reproducible 1/2/4/8-thread DuckDB benchmark with median/p95 latency, result checksums and `EXPLAIN ANALYZE` plans over 1.35M pitch facts
-- SQL joins, CTEs, window functions, conditional aggregation, and quality gates
-- Leakage-controlled, out-of-time whiff and hard-hit probability models
-- Fantasy Pitching Radar and seven-day Stream Planner
-- Daily 5×5 hitter decisions: open-date planning, category needs, replacement impact and evidence-based alerts
-- Tableau-ready CSV exports and an Excel lesson workbook
-- Reproducible Jupyter tutorials and model audits
-- Self-contained React dashboard with English / Traditional Chinese UI
-- Source lineage, definitions, denominators, and sample limits shown in the dashboard
+The official MLB schedule and live game feeds reported **159 final games, 12,110 all plays, 12,087 pitch-bearing plate appearances, and 46,843 actual pitch events** across these 12 dates. The versioned [audit manifest](evidence/mlb-source-audit/2026-09-09_2026-09-20.json) also records 46,843 Raw pitch-proxy rows, with daily Raw counts matching the official event totals on all 12 dates. The proxy is defined explicitly in the manifest and does not provide an independent cross-source event identifier.
 
-### Architecture
+The implemented [source reconciler](docs/SOURCE_RECONCILIATION.md) compares the official feeds with **Silver** at game and plate-appearance grain. It passed on seven dates and reported `source_mismatch` on five. Silver had 46,821 pitch rows in the audited window, **22 fewer** than the official actual-pitch count. The missing Silver rows exist in Raw with real pitch descriptions but a null `pitch_type`; the current Silver filter excludes them. Some other null-`pitch_type` rows are automatic ball or strike events rather than actual pitches, so the filter cannot simply be removed.
+
+The audit supports count agreement between the MLB feeds and the documented Raw proxy for those dates. It does not establish event-by-event semantic equivalence, season-wide completeness, upstream correctness or immutability, or an independent audit of MLB. The manifest deliberately remains `error / audit_has_errors` because the five Silver mismatches are evidence to investigate, not results to hide.
+
+## How the system fits together
 
 ```mermaid
-flowchart TD
-    R["Airflow daily scheduler"] --> A
-    A["Baseball Savant Statcast"] --> B["Python date partitions"]
-    W["MLB schedule and venue APIs"] --> X["Game-context partitions"]
-    B --> O["PostgreSQL OLTP: runs and request state"]
-    B --> C["Bronze: raw Parquet / private GCS"]
-    X --> C
-    C --> D["Silver: pitch fact table (DuckDB / BigQuery dbt)"]
-    D --> E["Gold: analysis summaries"]
-    D --> M["Gold: model features"]
-    M --> N["Model training and scoring"]
-    E --> F["Excel and Tableau exports"]
-    D --> H["Bilingual React dashboard"]
-    N --> H
-    N --> O
-    D --> Q["dbt tests and legacy reconciliation"]
+flowchart LR
+    S["Baseball Savant Statcast"] --> X["Python extractors"]
+    C["MLB schedule and venue data"] --> X
+    X --> B["Bronze: dated Parquet and raw tables"]
+    B --> V["Silver: DuckDB pitch and game facts"]
+    V --> G["Gold: SQL analysis marts"]
+    V --> M["Pitch models and pregame K baseline"]
+    G --> J["Reviewed JSON snapshot"]
+    M --> J
+    J --> U["Static React dashboard"]
+    O["Live MLB schedule and game feeds"] --> R["Official source reconciliation"]
+    B --> R
+    V --> R
+    R --> A["Versioned audit manifest"]
 ```
 
-The pitch fact table has one row per pitch, keyed by `game_pk + at_bat_number + pitch_number`.
+The Silver pitch fact is keyed by `game_pk + at_bat_number + pitch_number` and contains retained, classified pitches. Its current null-`pitch_type` exclusion is the coverage gap described above. The source-audit branch separately fetches MLB schedule and play-by-play responses, then compares their counts with the documented Raw proxy and local Silver data; it does not run as part of the normal dashboard render.
 
-PostgreSQL is an optional operational companion, not a replacement for DuckDB. It stores mutable run, partition, forecast-request/result and watchlist state while DuckDB remains responsible for analytical scans and model features. See the [bilingual OLTP guide](docs/OLTP.md) for the schema, Docker setup, transaction guarantees and real-PostgreSQL integration tests.
+The main local analytical path uses DuckDB. The [dbt project](docs/DBT.md) reproduces the core Bronze-to-Silver-to-Gold transformation in isolated local schemas and defines a BigQuery target with incremental merge, date partitioning, and clustering. That target and its [Terraform infrastructure](docs/CLOUD.md) have passed credential-free contracts; a real GCP run still needs a project, billing, and an approved deployment.
 
-The versioned [dbt transformation project](warehouse/) reproduces the core Bronze-to-Silver-to-Gold path locally and exposes a BigQuery target with merge incrementality, daily partitioning, clustering and configurable threads. [Terraform and a manual GitHub workflow](docs/CLOUD.md) provision private GCS/BigQuery resources and keyless repository-scoped OIDC, then capture machine-readable row, physical-design, bytes and slot evidence. The infrastructure is implemented and contract-tested; a real cloud run still requires an explicitly supplied GCP project and billing account.
+The optional [PostgreSQL OLTP store](docs/OLTP.md) keeps mutable run, partition, forecast-request, and watchlist state with constraints and transactional writes. The [Airflow 3 DAG](docs/AIRFLOW.md) schedules the pipeline, limits parallel work, serializes shared DuckDB writes, and ends with a health check. CI executes the DAG in plan-only mode; that test does not refresh data or prove a continuously running scheduler.
 
-The [Airflow 3 DAG](docs/AIRFLOW.md) schedules the existing full daily pipeline at 06:30 Pacific. It reuses the CLI's canonical command plan, separates DuckDB write barriers from safe parallel reads, prevents overlapping runs, and ends with an independent health check. CI imports and executes the complete DAG in plan-only mode so orchestration regressions fail without downloading data.
+## Run locally
 
-The [SQL performance study](docs/SQL_PERFORMANCE.md) benchmarks four representative analytical workloads across 1/2/4/8 DuckDB threads. It stores raw runs, median/p95 latency, cross-thread result checksums and `EXPLAIN ANALYZE` plans, and explicitly separates local parallel-query evidence from distributed BigQuery MPP claims.
+Use Python 3.11+ for the pipeline and Node.js 22.12+ for the dashboard. Commands below use Windows PowerShell and start from the repository root unless a section says otherwise.
 
-To inspect the recent-partition observability contract without credentials, downloads or writes to project data, run `.\.venv\Scripts\python.exe -m src.observability_demo`. The in-memory demo emits verified pass, attention and deterministic-error scenarios as JSON. Data Platform CI is configured to upload that JSON as the 30-day `observability-contract-evidence` artifact after the Python tests and pipeline-plan check pass.
+### View the included snapshot
 
-### Quick start
-
-Requirements: Python 3.11+ for the pipeline; Node.js 22.12+ and npm for the dashboard (GitHub Pages uses Node 22).
-
-To explore the committed full-data snapshot without downloading Statcast or training models, run from the repository root:
+This path needs no Statcast download or model training:
 
 ```powershell
 Set-Location dashboard
@@ -88,525 +80,112 @@ npm.cmd ci
 npm.cmd run dev -- --host 127.0.0.1
 ```
 
-Open the localhost URL printed by Vite. Choose **Compare** for pitchers, or **Hitters** for daily 5×5 batting decisions; use **繁中** to switch language. The tabs are Fantasy, Hitters, Compare, Models, and Pitch Lab. The public site is a static snapshot: its visible data cutoff can differ from today's date.
+Open the localhost address printed by Vite. Return to the repository root before running the commands below.
 
-To regenerate a small dataset instead, start from the repository root:
+### Build a small teaching dataset
+
+The sample covers April 1–3, 2025. It replaces the tracked dashboard snapshot with sample output, so preserve any reviewed full-data snapshot before running it.
 
 ```powershell
-# 1. Create the Python environment
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-
-# 2. Run the small real-data pipeline (April 1–3, 2025)
+.\.venv\Scripts\python.exe run_pipeline.py --mode sample --dry-run
 .\.venv\Scripts\python.exe run_pipeline.py --mode sample
-
-# 3. Build the dashboard
-Set-Location dashboard
-npm.cmd ci
-npm.cmd run build
 ```
 
-Open `dashboard/dist/index.html` after the build completes. On macOS/Linux, activate the environment with `source .venv/bin/activate`, use `python` in place of `.\.venv\Scripts\python.exe`, and use `npm` in place of `npm.cmd`.
+`--dry-run` prints the command plan without downloading data or writing outputs. It does not validate cached data or installed dependencies. Existing Parquet partitions are checked before reuse. See [operations](docs/OPERATIONS.md) for cache and failure recovery.
 
-The extractor validates existing Parquet partitions before reusing them. Sample mode reads only its configured dates, so a prior full-season run cannot silently alter the lesson dataset.
+### Refresh the full dataset
 
-To exercise the transformation layer against the current DuckDB database:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-dbt.txt
-Set-Location warehouse
-..\.venv\Scripts\dbt.exe build --profiles-dir . --target duckdb
-```
-
-This writes only isolated `dbt_mlb_*` schemas and runs the full model/test DAG. See [docs/DBT.md](docs/DBT.md) for the deterministic fixture, incremental rerun and BigQuery setup.
-
-To rerun the read-only SQL performance benchmark against the current local database:
+Full mode uses the configured 2025 season and the latest complete Los Angeles calendar date in the configured 2026 range. The first full run, or a run after a model feature-contract change, needs retraining:
 
 ```powershell
-.\.venv\Scripts\python.exe benchmarks\run_duckdb_benchmark.py --threads 1,2,4,8 --repetitions 5 --warmups 1
-```
-
-Sample mode replaces the dashboard snapshot with the small teaching dataset and omits full-mode models and forecasts. Keep the full snapshot when only fixing the UI; do not run the sample pipeline as a prerequisite for viewing the current Compare data.
-
-### Full pipeline
-
-```powershell
-.\.venv\Scripts\python.exe run_pipeline.py --mode full
-Set-Location dashboard
-npm.cmd run build
-```
-
-Full mode processes the configured 2025 regular season and the 2026 season through the latest complete day. It refreshes recent partitions, rebuilds DuckDB and exports, retrains the two models, scores the chronological holdout, and refreshes the fantasy tools and dashboard snapshot.
-
-The complete run is substantially slower and downloads much more data than sample mode.
-
-### Preview and rerun safely
-
-Run these commands from the repository root. `--dry-run` checks that the configuration is readable and contains the selected mode, then prints the ordered commands without running them; it does not validate dependencies or cached data.
-
-```powershell
-.\.venv\Scripts\python.exe run_pipeline.py --mode full --dry-run
-.\.venv\Scripts\python.exe run_pipeline.py --mode sample --skip-extract
-.\.venv\Scripts\python.exe run_pipeline.py --config config/pipeline_config.json --dry-run
-```
-
-`--skip-extract` rebuilds outputs from existing partitions and requires cached data. It cannot be combined with `--force-extract` or `--refresh-days`. Refresh days must be nonnegative; zero disables recent-partition refresh. A failed step stops the workflow with a nonzero exit code and names the failed module.
-
-### Models and interpretation
-
-The whiff model estimates `P(whiff | swing)` after a pitch has been tracked. The hard-hit model estimates hard-hit probability for eligible batted balls. They may use velocity, movement, release, and location from the current pitch, so neither model is a pre-pitch forecast.
-
-Training and evaluation are time ordered: the earlier season is used for training, followed by chronological validation and untouched test periods. Rolling player form, pitch-type history, and matchup history use prior events only and are frozen before each game.
-
-Generated model artifacts are written under `outputs/models/` and `outputs/predictions/`. These folders are intentionally excluded from Git; regenerate them locally to obtain current results.
-
-### Fantasy research tools
-
-The dashboard includes:
-
-- **Fantasy Pitching Radar:** 7-, 14-, and 30-day windows with Roto balance, strikeout-upside, and ratio-protection profiles.
-- **Upcoming Stream Planner:** confirmed probable starters combined with pitcher skill, opponent tendencies, park context, and a separate weather-risk flag.
-- **League Strategy Lab:** a transparent personalized-fit calculation for category or points-style research.
-- **Player Pool Manager:** browser-local labels such as Available, My roster, Watchlist, and Unavailable.
-- **Compare:** two or three pitchers side by side, with separate recent observed skill and next-start strikeout baselines.
-
-### Daily 5×5 hitter decisions
-
-For hitters, see the [complete methodology and workflow](docs/FANTASY_HITTERS.md). Select open lineup dates, prioritize R / HR / RBI / SB / AVG, paste available-player names, and compare a candidate with an existing option. AVG impact uses hits and at-bats, so an apparent counting-stat gain cannot silently hide ratio dilution. MLB active status and primary position do not establish a confirmed start or fantasy eligibility. Source evidence older than 24 hours pauses automatic shortlists.
-
-The default counting-stat pace uses season rates and recent current-team PA per team game. A separate optional recency scenario and a chronological conditional-rate diagnostic show the tradeoff; neither is advertised as calibrated projections or proven waiver gains. Hard contact, covered-AB xBA gaps and role changes provide sample-gated research signals.
-
-### Pregame starter strikeout baseline
-
-The Compare workspace adds a separate pregame target: strikeouts in a pitcher's next start. Three transparent baselines are evaluated: the training-season league mean, a small-sample-adjusted average of the last five starts, and a workload/opponent variant. Early validation selects the model; later validation calibrates an empirical 80% prediction interval. Fixed test dates remain separate. Selection never switches models based on test results.
-
-Historical starts are inferred from each team's first recorded pitcher in completed regular-season games, including openers and short starts. All features are frozen before the calendar day; historical announced probables, injuries, lineups, and pitch limits are unavailable. This retrospective backtest is conditional on actually starting and does not evaluate historical roster or start/sit decisions.
-
-`src.build_start_forecast` is part of both full workflows. It writes backtest rows, evaluation, upcoming forecasts, and comparison data to `outputs/forecast/`. Timestamped forecasts and their model metadata are exclusively created under `outputs/forecast/archive/`; later updates keep the first pregame prediction for each game/pitcher and reconcile completed starts. A changed starter is not a zero-strikeout result. Canceled/postponed games without a completed result remain pending. Historical backtest predictions are never inserted into this live archive.
-
-These tools do not know roster availability or every league's scoring rules. They support research; they do not promise fantasy outcomes.
-
-### Daily update on Windows
-
-Install the optional Windows Task Scheduler job:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_daily_update_task.ps1
-```
-
-Run the same workflow manually:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_daily_update.ps1
-```
-
-The task is named `MLB-Pitch-Analytics-Daily-Update` and is configured for 06:30 local time. Local status and transcript files are written under `logs/`, which is excluded from Git.
-
-The daily script now defaults to `--workflow daily`: it verifies a frozen model release before downloading or rebuilding data, keeps model files and benchmark predictions unchanged, and refreshes recent scores and dashboard outputs. Run one full retraining workflow first to create a release. Use `-Retrain` on the PowerShell script when explicitly retraining.
-
-```powershell
-# Daily update using the verified model release
-.\.venv\Scripts\python.exe run_pipeline.py --mode full --workflow daily
-
-# Rebuild from cached inputs without retraining
-.\.venv\Scripts\python.exe run_pipeline.py --mode full --workflow daily --skip-extract
-
-# Explicit retraining, benchmark scoring, and model release
+.\.venv\Scripts\python.exe run_pipeline.py --mode full --workflow retrain --dry-run
 .\.venv\Scripts\python.exe run_pipeline.py --mode full --workflow retrain
 ```
 
-`outputs/pipeline_status.json` records workflow, completed-step durations, and the failed step if execution stops. `outputs/lineage/model_release.json` binds the verified model files and frozen benchmark outputs to their original training dataset. Config or feature-contract changes, missing files, modified model files, or data rewinds reject reuse; they never trigger a silent automatic retraining run.
-
-### Validation
+Once a model release exists and verifies successfully, a daily run reuses it and refreshes recent scores and downstream outputs:
 
 ```powershell
-# Python tests
-.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v
+.\.venv\Scripts\python.exe run_pipeline.py --mode full --workflow daily --dry-run
+.\.venv\Scripts\python.exe run_pipeline.py --mode full --workflow daily
+```
 
-# Dashboard integrity and production build
+The daily workflow checks the frozen release before extraction. `--skip-extract` rebuilds from cached partitions; it cannot be combined with `--refresh-days` or `--force-extract`. The default full run downloads substantially more data than sample mode. A local refresh does not commit the snapshot or redeploy GitHub Pages.
+
+For the optional Windows schedule, use [install_daily_update_task.ps1](scripts/install_daily_update_task.ps1); [run_daily_update.ps1](scripts/run_daily_update.ps1) runs the same update manually. See the [operations guide](docs/OPERATIONS.md) for setup and publishing steps.
+
+### Check data and rebuild the dashboard
+
+```powershell
+# Read-only operational status; data age uses UTC calendar dates.
+.\.venv\Scripts\python.exe -m src.health_check --max-age-days 2
+
+# In-memory examples of pass, attention, and integrity-error behavior.
+.\.venv\Scripts\python.exe -m src.observability_demo
+
+# Live official MLB comparison for one date; writes a local evidence JSON.
+.\.venv\Scripts\python.exe -m src.reconcile_mlb_source --date 2026-09-20 `
+  --output outputs/observability/mlb-source-reconciliation-2026-09-20.json
+
+# Rebuild the compact, versioned 12-date source-audit manifest.
+.\.venv\Scripts\python.exe -m src.build_mlb_source_audit `
+  --start-date 2026-09-09 `
+  --end-date 2026-09-20 `
+  --output evidence/mlb-source-audit/2026-09-09_2026-09-20.json
+
 Set-Location dashboard
 npm.cmd run verify:runtime
 npm.cmd run build
 ```
 
-From the repository root, run the focused analysis tests and the actual Compare interaction check (requires Google Chrome; set `CHROME_PATH` for a nonstandard installation):
+The single-date reconciler returns `0` for agreement, `1` when official evidence is unavailable or no final games exist, and `2` for a mismatch. The range audit applies the same source contract to every date, adds the documented Raw proxy comparison, and writes its manifest even when it returns nonzero. On the versioned audit, September 20 returns `2` because Silver is short by one pitch. The current [observability policy](docs/OBSERVABILITY.md) treats missing same-date completed-game coverage as an error and pitch-volume anomalies as attention; neither rule alone proves source completeness.
+
+## Validation and engineering evidence
+
+From the repository root:
 
 ```powershell
-node --test dashboard/tests/mlb-pitch-analysis.test.mjs
-node --test dashboard/tests/mlb-hitter-analysis.test.mjs
-node scripts/check_compare.mjs local-check
-.\.venv\Scripts\python.exe -m src.health_check --max-age-days 2
-```
-
-The browser check opens the built HTML in an isolated profile, clicks Compare, verifies three selectors and intact navigation, rejects browser exceptions and page overflow, and saves desktop/mobile evidence under `outputs/performance/`. Health checks inspect local data and lineage, not the compiled HTML or public site. See the [maintenance guide](docs/OPERATIONS.md) for publishing and troubleshooting.
-
-### Project structure
-
-```text
-config/                Pipeline dates, modes, and local paths
-benchmarks/            DuckDB SQL workloads, runner, timings, checksums, and query plans
-cloud/                 Deterministic GCS landing and BigQuery evidence scripts
-data/                  Generated raw/context/Tableau data (Git-ignored)
-database/              Generated DuckDB database (Git-ignored)
-dashboard/             React source, reviewed snapshot, and build tooling
-docs/                  Bilingual architecture, operations, portfolio, and AI-workflow evidence
-infra/                 Terraform bootstrap and GCP data-platform modules
-orchestration/         Airflow 3 DAG, Docker environment, and topology contracts
-oltp/                  PostgreSQL operational-store migrations
-notebooks/             Tutorial and model-evaluation notebooks
-outputs/               Generated models, predictions, reports, and workbook
-scripts/               Dashboard build, sanitization, and Windows automation
-sql/                   Silver, gold, and analysis SQL
-src/                   Extraction, transformation, validation, and export code
-tests/                 Python unit and data-quality tests
-warehouse/             Dual-target dbt models, tests, seed, profiles, and CI fixture
-```
-
-### Metric definitions
-
-- `Whiff Rate = whiffs / swings`
-- `Chase Rate = out-of-zone swings / out-of-zone pitches`
-- `Hard-Hit Rate = batted balls at 95+ mph / batted balls with measured exit velocity`
-- `Zone Rate = pitches in Statcast zones 1–9 / all pitches`
-
-Always inspect the denominator and sample threshold before comparing pitchers.
-
-### Data and security
-
-No API key is required for the documented pipeline. Do not commit `.env` files, credentials, raw data, generated databases, model artifacts, exports, logs, or browser profiles. See [SECURITY.md](SECURITY.md) for the publication checklist.
-
-Primary sources:
-
-- [Baseball Savant CSV documentation](https://baseballsavant.mlb.com/csv-docs)
-- [Baseball Savant Statcast search](https://baseballsavant.mlb.com/statcast_search)
-- [MLB Stats API schedule](https://statsapi.mlb.com/api/v1/schedule)
-- [MLB Stats API venues](https://statsapi.mlb.com/api/v1/venues)
-- [pybaseball Statcast documentation](https://github.com/jldbc/pybaseball/blob/master/docs/statcast.md)
-
----
-
-## 繁體中文
-
-### 專案簡介
-
-本專案分析 MLB 投手在不同球數狀態與打者慣用手下，如何改變球種選擇、進壘位置與結果。內容涵蓋描述性分析、出手後球質模型、Fantasy 投手研究工具，以及可切換英文／繁體中文的互動式儀表板。
-
-本專案**不是**比賽勝負預測、運彩模型，也不保證 Fantasy 決策結果。
-
-### 專案亮點
-
-- 持久化[資料可觀測性](docs/OBSERVABILITY.md)：freshness 閘門、schema／筆數基準、SQL 品質歷史，以及透過既有 Airflow quality task 驗證的故障恢復
-- 即時 [MLB 來源對帳](docs/SOURCE_RECONCILIATION.md)：以 game／plate-appearance grain 比對並保存 schedule／play-by-play hashes，且明確回報 current-range failure
-
-- 透過 `pybaseball` 取得可中斷續跑的 Statcast 資料
-- 整合 MLB 賽程、球場、屋頂狀態與紀錄天氣
-- 使用日期分區 Parquet 與 DuckDB bronze／silver／gold 資料層
-- 選用 PostgreSQL OLTP 儲存，展示約束、冪等寫入、交易與操作型索引
-- 雙 target dbt DAG：incremental 逐球模型、20 項資料測試、DuckDB reconciliation，以及 BigQuery 分區／clustering 設定
-- Terraform 管理的私有 GCS landing、BigQuery datasets、限定 repository 的 GitHub OIDC、分離的部署／執行身份，以及具 guard 的雲端證據 workflow
-- Airflow 3 daily orchestration：兩個有上限的平行階段、retries、task／DAG timeouts、防止重疊執行、PostgreSQL metadata，以及 plan-only CI execution
-- 可驗證的 AI 輔助工程流程：包含人工審核邊界、公開 failure-to-fix 歷史，以及由 CI 強制檢查的 portfolio claims
-- 可重跑的 DuckDB 1／2／4／8-thread benchmark：對 135 萬筆逐球 facts 保存 median／p95 latency、結果 checksums 與 `EXPLAIN ANALYZE` plans
-- 展示 SQL JOIN、CTE、視窗函數、條件彙總與資料品質閘門
-- 避免資料洩漏的跨時間揮空率與強擊球機率模型
-- Fantasy Pitching Radar 與未來七天 Stream Planner
-- 每日 5×5 打者決策：空缺日規劃、類別需求、替換影響與有證據的提醒
-- Tableau 用 CSV 匯出與 Excel 教學活頁簿
-- 可重現的 Jupyter 教學與模型稽核 Notebook
-- 英文／繁體中文 React 儀表板，並可產生單一 HTML 檔案
-- 儀表板中公開資料來源、指標定義、分母與樣本限制
-
-### 系統架構
-
-```mermaid
-flowchart TD
-    R["Airflow 每日排程"] --> A
-    A["Baseball Savant Statcast"] --> B["Python 日期分區"]
-    W["MLB 賽程與球場 API"] --> X["比賽情境分區"]
-    B --> O["PostgreSQL OLTP：執行與請求狀態"]
-    B --> C["Bronze：原始 Parquet／私有 GCS"]
-    X --> C
-    C --> D["Silver：逐球事實表（DuckDB／BigQuery dbt）"]
-    D --> E["Gold：分析摘要"]
-    D --> M["Gold：模型特徵"]
-    M --> N["模型訓練與評分"]
-    E --> F["Excel 與 Tableau 匯出"]
-    D --> H["雙語 React 儀表板"]
-    N --> H
-    N --> O
-    D --> Q["dbt 測試與舊版結果對帳"]
-```
-
-逐球事實表每一列代表一球，主鍵為 `game_pk + at_bat_number + pitch_number`。
-
-PostgreSQL 是選用的操作型配套，而非 DuckDB 的替代品。它保存會變動的執行、分區、預測請求／結果與觀察名單狀態；DuckDB 繼續負責分析掃描與模型特徵。Schema、Docker 設定、交易保證與真實 PostgreSQL integration tests 請見[雙語 OLTP 指南](docs/OLTP.md)。
-
-受版本控制的 [dbt 轉換專案](warehouse/) 可在本機重現核心 Bronze-to-Silver-to-Gold 路徑，並提供含 merge incremental、每日分區、clustering 與可調整 threads 的 BigQuery target。[Terraform 與手動 GitHub workflow](docs/CLOUD.md)會建立私有 GCS／BigQuery 資源與限定 repository 的無金鑰 OIDC，並保存 row count、physical design、bytes 與 slot 的 machine-readable 證據。基礎設施已實作並通過 contract tests；真實雲端執行仍需明確提供 GCP project 與 billing account。
-
-[Airflow 3 DAG](docs/AIRFLOW.md) 會在 Pacific 06:30 排程既有 full daily pipeline。它重用 CLI 的 canonical command plan、將 DuckDB write barrier 與安全的平行讀取分開、防止重疊執行，最後執行獨立 health check。CI 會以 plan-only mode 匯入並走完 DAG，因此不下載資料也能阻擋 orchestration regression。
-
-[SQL 效能研究](docs/SQL_PERFORMANCE.md)會以 1／2／4／8 DuckDB threads 量測四類代表性分析 workload，保存每次執行、median／p95、跨 thread 結果 checksum 與 `EXPLAIN ANALYZE` plans，並明確區分本機平行查詢證據與分散式 BigQuery MPP claims。
-
-若要在不使用憑證、不下載資料、也不寫入專案資料的情況下檢視 recent-partition observability 契約，可執行 `.\.venv\Scripts\python.exe -m src.observability_demo`。此 in-memory demo 會以 JSON 輸出已驗證的 pass、attention 與 deterministic-error 情境。Data Platform CI 已設定在 Python tests 與 pipeline-plan check 通過後，上傳保存 30 天的 `observability-contract-evidence` JSON artifact。
-
-### 快速開始
-
-需求：資料流程使用 Python 3.11+；儀表板使用 Node.js 22.12+ 與 npm（GitHub Pages 使用 Node 22）。
-
-若只想查看儲存庫內的完整資料快照，不必下載 Statcast 或重新訓練模型。從專案根目錄執行：
-
-```powershell
-Set-Location dashboard
-npm.cmd ci
-npm.cmd run dev -- --host 127.0.0.1
-```
-
-開啟 Vite 印出的 localhost 網址，選擇 **Compare** 比較投手，或 **Hitters** 進入每日 5×5 打者決策；點 **繁中** 切換語言。五個分頁為 Fantasy、Hitters、Compare、Models、Pitch Lab。公開網站是靜態快照，畫面上的資料截止日可能與今天不同。
-
-若要重新產生小型教學資料，請回到專案根目錄執行：
-
-```powershell
-# 1. 建立 Python 環境
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-
-# 2. 執行小型真實資料流程（2025 年 4 月 1–3 日）
-.\.venv\Scripts\python.exe run_pipeline.py --mode sample
-
-# 3. 建置儀表板
-Set-Location dashboard
-npm.cmd ci
-npm.cmd run build
-```
-
-建置完成後開啟 `dashboard/dist/index.html`。macOS/Linux 請以 `source .venv/bin/activate` 啟用環境，以 `python` 取代 `.\.venv\Scripts\python.exe`，並以 `npm` 取代 `npm.cmd`。
-
-擷取程式會先驗證既有 Parquet 分區再重複使用。Sample 模式只讀取設定中的日期，因此先前的完整球季資料不會悄悄改變教學樣本。
-
-若要以目前 DuckDB 驗證轉換層：
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-dbt.txt
-Set-Location warehouse
-..\.venv\Scripts\dbt.exe build --profiles-dir . --target duckdb
-```
-
-此流程只會寫入隔離的 `dbt_mlb_*` schemas，並執行完整 model／test DAG。Deterministic fixture、incremental rerun 與 BigQuery 設定請見 [docs/DBT.md](docs/DBT.md)。
-
-若要在目前本機資料庫上重跑 read-only SQL performance benchmark：
-
-```powershell
-.\.venv\Scripts\python.exe benchmarks\run_duckdb_benchmark.py --threads 1,2,4,8 --repetitions 5 --warmups 1
-```
-
-Sample 模式會將儀表板快照替換為小型教學資料，且不包含完整模式的模型與預測。只修介面時保留完整快照；查看目前 Compare 資料不需要先執行 Sample。
-
-### 完整資料流程
-
-```powershell
-.\.venv\Scripts\python.exe run_pipeline.py --mode full
-Set-Location dashboard
-npm.cmd run build
-```
-
-Full 模式會處理設定中的 2025 年例行賽，以及 2026 年截至最近完整日期的資料；同時重新整理近期分區、DuckDB、匯出檔、兩個模型、時間序列測試集評分、Fantasy 工具與儀表板快照。
-
-完整模式下載量與執行時間都遠高於 Sample 模式。
-
-### 預覽與重新執行
-
-以下指令請從專案根目錄執行。`--dry-run` 檢查設定檔可讀且包含所選模式，再列出步驟，不下載資料或寫入產物；不會驗證套件或快取資料是否完整。
-
-```powershell
-.\.venv\Scripts\python.exe run_pipeline.py --mode full --dry-run
-.\.venv\Scripts\python.exe run_pipeline.py --mode sample --skip-extract
-.\.venv\Scripts\python.exe run_pipeline.py --config config/pipeline_config.json --dry-run
-```
-
-`--skip-extract` 使用既有分區重建產物，需要事先取得資料，且不可搭配 `--force-extract` 或 `--refresh-days`。更新天數不可為負值；零代表停用近期分區更新。步驟失敗時，流程會停止、指出失敗模組並回傳非零結束碼。
-
-### 模型與解讀方式
-
-揮空模型估計球被追蹤後的 `P(whiff | swing)`；強擊球模型則估計合格擊球事件成為強擊球的機率。模型可能使用該球的球速、位移、出手特徵與進壘位置，因此不能描述為投球前預測。
-
-訓練與評估依時間排序：較早球季作為訓練資料，之後依序切分驗證集與未接觸測試集。球員近期狀態、球種歷史與對戰歷史只使用過去事件，並在每場比賽開始前凍結。
-
-模型產物會寫入 `outputs/models/` 與 `outputs/predictions/`。這些資料夾刻意不提交到 Git；若要取得最新結果，請在本機重新產生。
-
-### Fantasy 研究工具
-
-儀表板包含：
-
-- **Fantasy Pitching Radar：**提供 7、14、30 天視窗，以及 Roto 平衡、三振上限與比率保護模式。
-- **Upcoming Stream Planner：**只採用已確認的預定先發，結合投手能力、對手趨勢、球場環境，並另外標示天氣風險。
-- **League Strategy Lab：**針對 Categories 或 Points 類型聯盟提供透明的個人化適配分數。
-- **Player Pool Manager：**可在瀏覽器本機標記 Available、My roster、Watchlist、Unavailable。
-- **投手比較：**並排比較兩至三位投手，分開呈現近期歷史表現與下一場三振預測。
-
-這些工具不知道即時自由球員狀態，也無法涵蓋每個聯盟的計分規則；用途是協助研究，而不是保證結果。
-
-### 每日 5×5 打者決策
-
-打者功能請見[完整方法與使用流程](docs/FANTASY_HITTERS.md)。勾選先發空缺日、調整 R／HR／RBI／SB／AVG 需求、貼上自由球員姓名，再比較候選與現有人選。AVG 影響以安打與打數計算，不會用累積類別的增益掩蓋比率稀釋。MLB 現役與主要守位不等於已確認先發或 Fantasy 守位資格；名單／賽程來源超過 24 小時會暫停自動候選。
-
-產量估值預設採球季速率與現球隊近期每場 PA，另提供近期平滑情境及跨時間速率誤差檢查，不宣稱已校準預測或已證明補人收益。強擊球、同覆蓋打數 xBA 落差與出賽量變化只在樣本門檻達成時提供研究訊號。
-
-### 賽前先發三振基準預測
-
-比較頁提供聯盟平均、近期先發平均，以及工作量／對手調整三種透明基準。模型只使用比賽日期之前已完成的資料；驗證期前段選模型、後段校準 80% 預測區間，最後才以固定測試期評估。區間代表歷史校準的不確定性，不能保證未來覆蓋率。
-
-歷史回測以實際出賽的首位投手為對象，包含開局投手與短局數先發；沒有重建當時公布的預定先發，也未納入傷勢、打線與用球限制。這是可檢驗的基準模型，尚不是經實際未來賽事驗證的預測服務。
-
-每次更新會將賽前預測與 UTC 時間寫入 `outputs/forecast/archive/`，保留每場／每位投手的首次預測，後續與實際結果對帳。更換先發不算零次三振，尚未完成的比賽保留待確認狀態；歷史回測不會冒充即時預測紀錄。模型方法與資料版本見 `outputs/forecast/model_manifest.json`，回測及評估見同目錄的 CSV。
-
-### Windows 每日更新
-
-安裝選用的 Windows 工作排程：
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_daily_update_task.ps1
-```
-
-手動執行相同流程：
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_daily_update.ps1
-```
-
-排程名稱為 `MLB-Pitch-Analytics-Daily-Update`，預設每天本機時間 06:30 執行。狀態與逐日紀錄會寫入已被 Git 排除的 `logs/`。
-
-每日腳本預設採用 `--workflow daily`：下載或重建前先驗證已凍結的模型版本，保留模型檔與固定基準預測，只更新近期評分與下游產物。首次使用須先完成一次完整重訓；PowerShell 腳本的 `-Retrain` 可明確要求重訓。
-
-```powershell
-# 使用已驗證模型更新
-.\.venv\Scripts\python.exe run_pipeline.py --mode full --workflow daily
-
-# 使用既有資料更新，不重新訓練
-.\.venv\Scripts\python.exe run_pipeline.py --mode full --workflow daily --skip-extract
-
-# 明確重新訓練、固定基準評分並建立模型版本
-.\.venv\Scripts\python.exe run_pipeline.py --mode full --workflow retrain
-```
-
-`outputs/pipeline_status.json` 保存流程、步驟耗時與失敗位置；`outputs/lineage/model_release.json` 將模型與固定基準產物綁定原始訓練資料。設定或特徵定義改變、檔案遺失、模型被修改、資料日期倒退時會拒絕重用，不會悄悄自動重訓。
-
-### 驗證方式
-
-```powershell
-# Python 測試
 .\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v
-
-# 儀表板完整性檢查與正式建置
-Set-Location dashboard
-npm.cmd run verify:runtime
-npm.cmd run build
+node --test dashboard/tests/mlb-pitch-analysis.test.mjs `
+  dashboard/tests/mlb-hitter-analysis.test.mjs `
+  dashboard/tests/dashboard-payload-budget.test.mjs `
+  dashboard/tests/snapshot-integrity.test.mjs
+node scripts/check_dashboard_payload.mjs
+node scripts/check_compare.mjs prepublish
 ```
 
-從專案根目錄執行聚合邏輯測試與 Compare 實際互動檢查（需安裝 Google Chrome；非預設位置可設定 `CHROME_PATH`）：
+The payload check reads the reviewed snapshot and built HTML, then enforces the limits in `config/dashboard_performance.json`; its gzip figure is a deterministic local compression measurement, not proof of a particular CDN response header. The browser check requires Chrome and a fresh `dashboard/dist/index.html` build. It opens an isolated profile, exercises Compare and Hitters, checks desktop and mobile overflow, and saves local evidence under `outputs/performance/`. The last local `npm test` attempt was not green: generic starter-maintainer tests assert example queries and theme defaults that this MLB app intentionally replaces, and the broad run did not exit cleanly. The scoped checks and Chrome prepublication smoke above passed on the documented snapshot.
 
-```powershell
-node --test dashboard/tests/mlb-pitch-analysis.test.mjs
-node --test dashboard/tests/mlb-hitter-analysis.test.mjs
-node scripts/check_compare.mjs local-check
-.\.venv\Scripts\python.exe -m src.health_check --max-age-days 2
-```
+| Area | Inspectable evidence | Current boundary |
+| --- | --- | --- |
+| SQL and parallelism | [Benchmark inputs, plans, checksums, median and p95](docs/SQL_PERFORMANCE.md) | Local DuckDB behavior, not distributed MPP performance |
+| Transformation | [dbt models, incremental rerun, and 20 data tests](docs/DBT.md) | DuckDB build verified; BigQuery target parsed and contract-tested |
+| OLTP | [PostgreSQL schema and service-backed CI tests](docs/OLTP.md) | Operational companion, not the analytical warehouse |
+| Cloud | [GCS, BigQuery, OIDC, and Terraform design](docs/CLOUD.md) | Deployable and validated without a live GCP apply |
+| Orchestration | [Airflow DAG and topology contracts](docs/AIRFLOW.md) | CI plan execution, not a live scheduler run |
+| Reliability | [Observability rules](docs/OBSERVABILITY.md) and [official source reconciliation](docs/SOURCE_RECONCILIATION.md) | Local checks and dated official comparisons have different claims |
+| Engineering process | [AI-assisted workflow and human review evidence](docs/AI_WORKFLOW.md) | No unmeasured productivity claim |
 
-瀏覽器檢查使用獨立設定檔開啟建置後 HTML，點擊 Compare，確認三個選單與導覽仍在、沒有執行例外或頁面橫向溢出，並將桌面／手機證據寫入 `outputs/performance/`。健康檢查只驗證本機資料與血緣，不驗證編譯後 HTML 或公開網站。發布與故障排除請見[維護指南](docs/OPERATIONS.md)。
+## Interpretation and limits
 
-### 專案結構
+- The whiff model estimates `P(whiff | swing)` after a tracked pitch. The hard-hit model scores eligible batted balls using measured contact data. Both can use features from the current pitch and must not be presented as pre-pitch forecasts.
+- Compare includes a separate **pregame** strikeout baseline. Its fixed chronological test period ends September 3, 2026; later data refreshes do not silently change test membership. Historical backtests are conditional on the pitcher actually starting. Injury, lineup, and pitch-limit information is incomplete.
+- A live forecast remains pending until an observed outcome is available. Postponed games and changed starters are not scored as zero strikeouts. See the [forecast monitoring guide](docs/OPERATIONS.md).
+- `Whiff rate = whiffs / swings`; `chase rate = out-of-zone swings / out-of-zone pitches`; `hard-hit rate = 95+ mph batted balls / batted balls with measured exit velocity`. Review denominators and sample sizes before comparing players.
+- The dashboard supports fantasy research. It does not know every league's roster availability or scoring rules and does not guarantee decisions or outcomes.
 
-```text
-config/                資料日期、模式與本機路徑設定
-benchmarks/            DuckDB SQL workloads、runner、timings、checksums 與 query plans
-cloud/                 Deterministic GCS landing 與 BigQuery 證據腳本
-data/                  產生的原始／情境／Tableau 資料（Git 排除）
-database/              產生的 DuckDB 資料庫（Git 排除）
-dashboard/             React 原始碼、審查快照與建置工具
-docs/                  雙語架構、維運、履歷與 AI 協作證據
-infra/                 Terraform bootstrap 與 GCP data-platform modules
-orchestration/         Airflow 3 DAG、Docker 環境與 topology contracts
-oltp/                  PostgreSQL 操作型資料庫 migrations
-notebooks/             教學與模型評估 Notebook
-outputs/               產生的模型、預測、報告與 Excel 活頁簿
-scripts/               儀表板建置、清理與 Windows 自動化
-sql/                   Silver、Gold 與分析 SQL
-src/                   擷取、轉換、驗證與匯出程式
-tests/                 Python 單元測試與資料品質測試
-warehouse/             雙 target dbt models、tests、seed、profiles 與 CI fixture
-```
+## Repository map
 
-### 指標定義
+| Path | Purpose |
+| --- | --- |
+| `src/`, `sql/`, `config/` | Extraction, transformations, validation, and pipeline policy |
+| `warehouse/`, `oltp/`, `orchestration/` | dbt, PostgreSQL, and Airflow implementations |
+| `infra/`, `cloud/`, `benchmarks/` | Cloud infrastructure, verification, and SQL performance evidence |
+| `dashboard/` | React application, reviewed JSON snapshot, and build tooling |
+| `tests/`, `docs/`, `evidence/` | Regression contracts, detailed engineering evidence, and compact versioned audit manifests |
+| `data/`, `database/`, `outputs/`, `logs/` | Generated local data and artifacts; generally excluded from Git |
 
-- `揮空率 = 揮空次數 / 揮棒次數`
-- `追打率 = 好球帶外揮棒 / 好球帶外投球`
-- `強擊球率 = 初速至少 95 mph 的擊球 / 有擊球初速測量的擊球事件`
-- `進壘率 = Statcast 1–9 區投球 / 所有投球`
+Primary sources: [Baseball Savant Statcast](https://baseballsavant.mlb.com/statcast_search), [Statcast CSV field documentation](https://baseballsavant.mlb.com/csv-docs), [MLB schedule API](https://statsapi.mlb.com/api/v1/schedule), and [pybaseball documentation](https://github.com/jldbc/pybaseball/blob/master/docs/statcast.md).
 
-比較投手前，務必檢查指標分母與最低樣本門檻。
-
-### 資料與安全
-
-文件中的流程不需要 API Key。請勿提交 `.env`、帳密、原始資料、資料庫、模型產物、匯出檔、日誌或瀏覽器設定檔。完整公開檢查清單請參閱 [SECURITY.md](SECURITY.md)。
-
-主要資料來源：
-
-- [Baseball Savant CSV 文件](https://baseballsavant.mlb.com/csv-docs)
-- [Baseball Savant Statcast Search](https://baseballsavant.mlb.com/statcast_search)
-- [MLB Stats API 賽程](https://statsapi.mlb.com/api/v1/schedule)
-- [MLB Stats API 球場](https://statsapi.mlb.com/api/v1/venues)
-- [pybaseball Statcast 文件](https://github.com/jldbc/pybaseball/blob/master/docs/statcast.md)
-
----
-
-## Reliability / 資料與產物可靠性
-
-- Missing exit velocity remains an unknown hard-hit label, excluded from model targets and rate denominators. Total and measured counts remain separate; `outputs/measurement_coverage.csv` reports coverage by season.
-- Local quality gates compare completed regular-season games in the cached MLB schedule against Statcast. The separate live [source reconciler](docs/SOURCE_RECONCILIATION.md) re-fetches official schedule/play-by-play evidence and can detect games absent from both local tables; it still cannot independently audit MLB itself.
-- `model_evaluation` in `config/pipeline_config.json` fixes training through 2025-09-28, validation from 2026-03-25, and testing from 2026-06-13 through 2026-09-03. Adding dates cannot change benchmark membership. Changing boundaries starts a new benchmark and requires regeneration.
-- Each rebuild commits `metadata.dataset_version`. Model, scoring, Fantasy and snapshot CLI stages write SHA-256 receipts to `outputs/lineage/`; downstream stages reject missing, stale, altered or superseded dependencies. These local receipts are not an immutable historical archive or production model registry.
-- Sample snapshots omit full-mode model/Fantasy artifacts. Optional `paths.dashboard_snapshot` redirects the snapshot for isolated validation.
-- Snapshot replacement is atomic. Other outputs are not one atomic release bundle; a failed stage invalidates its receipt and blocks downstream snapshot generation.
-
-- 強擊球初速缺失保留為未知，不納入模型標籤與比率分母；全部擊球數與有效測量數分開保存，`outputs/measurement_coverage.csv` 列出各球季覆蓋率。
-- 本地品質閘門將快取賽程中的已完成例行賽與 Statcast 比對；獨立的即時[來源對帳](docs/SOURCE_RECONCILIATION.md)會重新抓取官方 schedule／play-by-play，因此可發現兩個本地表都缺少的比賽，但仍不能獨立稽核 MLB 自身。
-- 設定中的 `model_evaluation` 固定訓練截止日為 2025-09-28、驗證開始日為 2026-03-25、測試期為 2026-06-13 至 2026-09-03；新增日期不會改變基準成員，修改邊界則須重建新基準。
-- 每次重建保存 `metadata.dataset_version`，模型、評分、Fantasy 與快照產生 SHA-256 血緣收據；下游拒絕缺失、過期、遭修改或已被取代的相依產物。這些本機收據不是不可竄改的歷史封存或正式模型登錄服務。
-- Sample 模式不會夾帶舊的完整球季模型結果；可用 `paths.dashboard_snapshot` 將隔離驗證的快照寫至其他位置。
-- 快照採原子替換，但全部輸出並非同一原子版本包；步驟失敗會使收據失效，阻止下游產生混用版本的快照。
-
-Frozen benchmark evaluation uses `*_test_predictions.parquet`; Fantasy uses separate `*_recent_predictions.parquet` covering the latest 60 calendar days after validation. These recent scores support current/prior windows and remain post-release pitch-quality estimates, not pregame predictions.
-
-固定基準評估使用 `*_test_predictions.parquet`；Fantasy 使用獨立的 `*_recent_predictions.parquet`，涵蓋最近 60 個日曆日且只取驗證期之後的資料，支援本期與前期比較。這些仍是出手後球質評分，不是賽前預測。
-
-The dashboard keeps its complete offline snapshot. Stable filtered-row references, single-pass totals and cached Pitch Lab aggregations avoid recalculating large charts for unrelated interactions. `node scripts/measure_dashboard.mjs <label>` saves an isolated local Chrome measurement and screenshots under `outputs/performance/`; these are simulated measurements, not real-user Core Web Vitals. That measurement helper currently uses the default Windows Chrome installation.
-
-前端保留完整資料與離線單檔：篩選後資料使用穩定參照，總量以單次掃描計算；只有開啟 Pitch Lab 時才計算大型圖表聚合，切換語言或操作球員清單會沿用快取。可用 `node scripts/measure_dashboard.mjs <label>` 在獨立 Chrome 中量測，結果與桌面／手機截圖保存於 `outputs/performance/`。這是本機模擬測試，並非真實使用者的 Core Web Vitals；此效能量測腳本目前使用 Windows 預設 Chrome 安裝位置。
-
-```powershell
-# Rebuild cached data with the existing model release / 以既有模型版本重建快取資料
-.\.venv\Scripts\python.exe run_pipeline.py --mode full --workflow daily --skip-extract
-Set-Location dashboard
-npm.cmd run build
-```
-
-## Live forecast monitoring / 實際預測監測
-
-Read-only operational health / 唯讀運作健康檢查：
-
-```powershell
-.\.venv\Scripts\python.exe -m src.health_check --max-age-days 2
-```
-
-Exit codes: `0` checks passed, `1` needs attention, `2` error. Checks UTC calendar-day data age, recursive snapshot lineage and the last pipeline status without changing files or fetching data. The age threshold is an operational reminder, not proof of missing games; consider the configured range and off-season. A running marker does not prove a live process. This command does not validate the compiled HTML or external deployment.
-
-結束碼：`0` 檢查通過、`1` 需要留意、`2` 錯誤。指令直接讀取目前資料日期、snapshot 遞迴血緣與最後 pipeline 狀態，不修改檔案或下載資料。資料年齡依 UTC 日曆日計算；超過門檻不代表一定缺比賽，應同時考慮設定範圍與休賽期。`running` 紀錄也不代表程序仍存活。靜態 dashboard 不會自動得知後續失敗；此指令不驗證編譯後 HTML 或外部部署。失敗或中斷的 pipeline 現在也會記錄結束時間，方便比對 logs。
-
-`outputs/forecast/live_monitor.csv` summarizes first archived forecasts by model version: scored, pending, excluded and invalid outcomes; MAE, RMSE, signed bias and interval coverage. Only observed finite outcomes enter errors; coverage uses its own valid-bound denominator. Fewer than 30 outcomes is a display caution, not a statistical validation threshold. Backtests are never pooled with live outcomes. The full daily/retrain workflows regenerate this table automatically.
-
-「投手比較」新增實際預測監測，依模型版本分列有效結果、待完成、排除、無效結果、MAE、偏差與區間覆蓋率。正偏差表示高估三振數；沒有結果時保留未知。區間使用獨立的有效樣本分母；30 筆只是顯示提醒門檻，不是可靠性認證。完整模式的每日更新與重新訓練流程均自動更新此表。
-
-## License / 授權
-
-No license has been added. All rights are reserved unless the repository owner states otherwise.
-
-目前尚未加入授權條款；除非專案擁有者另行說明，否則保留所有權利。
+Do not commit credentials, raw data, generated databases, model files, logs, or browser profiles. Review [SECURITY.md](SECURITY.md) before publication. No license has been added; all rights are reserved unless the repository owner states otherwise.

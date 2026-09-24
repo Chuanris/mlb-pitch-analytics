@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import unittest
 
@@ -15,6 +16,7 @@ OPERATIONS = ROOT / "docs" / "OPERATIONS.md"
 README = ROOT / "README.md"
 PR_TEMPLATE = ROOT / ".github" / "pull_request_template.md"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+SOURCE_AUDIT = ROOT / "evidence" / "mlb-source-audit" / "2026-09-09_2026-09-20.json"
 
 
 class PortfolioEvidenceContractTests(unittest.TestCase):
@@ -29,6 +31,7 @@ class PortfolioEvidenceContractTests(unittest.TestCase):
         cls.pr_template = PR_TEMPLATE.read_text(encoding="utf-8")
         cls.ci_workflow = CI_WORKFLOW.read_text(encoding="utf-8")
         cls.ci_contract = yaml.load(cls.ci_workflow, Loader=yaml.BaseLoader)
+        cls.source_audit = json.loads(SOURCE_AUDIT.read_text(encoding="utf-8"))
 
     def test_ai_case_study_links_failed_diagnostic_and_green_runs(self):
         for run_id in ("34539763740", "34540591806", "34540760348"):
@@ -108,14 +111,41 @@ class PortfolioEvidenceContractTests(unittest.TestCase):
     def test_source_reconciliation_evidence_has_explicit_claim_boundaries(self):
         self.assertIn("docs/SOURCE_RECONCILIATION.md", self.readme)
         self.assertIn("[MLB source reconciliation](SOURCE_RECONCILIATION.md)", self.portfolio)
-        for evidence in (
-            "15 official final games = 15 local completed context games",
-            "1,123 official plate appearances = 1,123 local plate appearances",
-            "4,380 official pitch events = 4,380 local pitch rows",
-            "must **not** claim",
-            "not an independent audit of MLB",
-        ):
-            self.assertIn(evidence, self.source_reconciliation)
+        audit_link = "evidence/mlb-source-audit/2026-09-09_2026-09-20.json"
+        self.assertIn(audit_link, self.readme)
+        self.assertIn(f"../{audit_link}", self.source_reconciliation)
+        self.assertIn(f"../{audit_link}", self.portfolio)
+
+        summary = self.source_audit["summary"]
+        for document in (self.readme, self.source_reconciliation):
+            for value in (
+                summary["official_final_games"],
+                summary["official_plate_appearances"],
+                summary["official_pitch_plate_appearances"],
+                summary["official_pitch_events"],
+                summary["raw_pitch_proxy_rows"],
+                summary["silver_pitch_rows"],
+            ):
+                self.assertIn(f"{value:,}", document)
+
+        self.assertIn("all plays", self.source_reconciliation.lower())
+        self.assertIn("pitch-bearing plate appearances", self.source_reconciliation.lower())
+        self.assertIn("not an independent audit of MLB", self.source_reconciliation)
+        self.assertNotIn("zero context games", self.source_reconciliation)
+        self.assertNotIn("0 context games", self.source_reconciliation)
+
+    def test_versioned_source_audit_is_reproducible_and_publishable(self):
+        command = ".\\.venv\\Scripts\\python.exe -m src.build_mlb_source_audit"
+        for document in (self.readme, self.source_reconciliation, self.operations):
+            self.assertIn(command, document)
+        self.assertIn(
+            "dashboard/tests/snapshot-integrity.test.mjs",
+            self.operations,
+        )
+
+    def test_readme_language_claim_matches_english_only_readme(self):
+        self.assertFalse(any("\u4e00" <= character <= "\u9fff" for character in self.readme))
+        self.assertIn("English-only README", self.portfolio)
 
 
 if __name__ == "__main__":
